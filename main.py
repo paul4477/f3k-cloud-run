@@ -62,18 +62,27 @@ def ping():
     announcer.announce(msg=msg)
     return {}, 200
 
+
+@app.route('/state', methods=['POST'])
+def state():
+    data = flask.request.json
+    msg = format_sse(data, event="state")
+    announcer.announce(msg=msg)
+    return {}, 200
+
+
 @app.route("/")
 def hello():
     
     return flask.render_template('test.html')
 
 @app.route('/listen', methods=['GET'])
-def listen():
+async def listen():
 
-    def stream():
+    async def stream():
         messages = announcer.listen()  # returns a queue.Queue
         while True:
-            msg = messages.get()  # blocks until a new message arrives
+            msg = await messages.get()  # blocks until a new message arrives
             yield msg
 
     return flask.Response(stream(), mimetype='text/event-stream')

@@ -31,7 +31,17 @@ console.log(event);
       messageLog.value += message;
       //eventList.appendChild(newElement);
     });
+    eventSource.addEventListener("state", (event) => {
+console.log(event);
+      
+      const timestamp = new Date().toLocaleTimeString();
+      const message = `[${timestamp}] ${event.data}\n`;
+      
+      messageLog.value += message;
+      
+    });
      
+    
      // Handle connection open
      eventSource.onopen = function(event) {
        const timestamp = new Date().toLocaleTimeString();
