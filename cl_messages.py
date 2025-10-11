@@ -6,7 +6,7 @@ class MessageAnnouncer:
         self.listeners = []
 
     def listen(self):
-        q = queue.SimpleQueue(maxsize=5)
+        q = queue.Queue(maxsize=50)
         self.listeners.append(q)
         return q
 
