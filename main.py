@@ -77,12 +77,12 @@ def hello():
     return flask.render_template('test.html')
 
 @app.route('/listen', methods=['GET'])
-async def listen():
+def listen():
 
-    async def stream():
+    def stream():
         messages = announcer.listen()  # returns a queue.Queue
         while True:
-            msg = await messages.get()  # blocks until a new message arrives
+            msg = messages.get()  # blocks until a new message arrives
             yield msg
 
     return flask.Response(stream(), mimetype='text/event-stream')
