@@ -58,7 +58,7 @@ def format_sse(data: str, event=None) -> str:
 
 @app.route('/ping')
 def ping():
-    msg = format_sse(data='pong')
+    msg = format_sse(data=time.time(), event="pong")
     announcer.announce(msg=msg)
     return {}, 200
 
