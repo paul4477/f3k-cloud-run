@@ -79,9 +79,10 @@ def listen():
     return flask.Response(stream(), mimetype='text/event-stream')
 
 from typing import Callable, Optional
+import cl_messages
 announcer: Optional[cl_messages.MessageAnnouncer] = None
 with app.app_context():
-    import cl_messages
+    
     announcer = cl_messages.MessageAnnouncer()
 
 """@app.route("/")
