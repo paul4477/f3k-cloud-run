@@ -33,10 +33,15 @@ announcer = cl_messages.MessageAnnouncer()
 ###
 
 
-
 import flask
+from flask import Flask, render_template
+from flask_sse import sse
 
 app = flask.Flask(__name__)
+app.config["REDIS_URL"] = "redis://127.0.0.1"
+
+app.register_blueprint(sse, url_prefix='/listen')
+
 
 from f3k_cl_competition import Round, Group, make_rounds
 
@@ -64,15 +69,17 @@ def format_sse(data: str, event=None) -> str:
 @app.route('/ping')
 def ping():
     msg = format_sse(data=time.time(), event="pong")
-    announcer.announce(msg=msg)
+    #announcer.announce(msg=msg)
+    sse.publish({'time':time.time()}, type="pong")
     return {}, 200
 
 
 @app.route('/state', methods=['POST'])
 def state():
     data = flask.request.json
-    msg = format_sse(data, event="state")
-    announcer.announce(msg=msg)
+    #msg = format_sse(data, event="state")
+    sse.publish(data, type="state")
+    #announcer.announce(msg=msg)
     return {}, 200
 
 
@@ -81,7 +88,7 @@ def hello():
     
     return flask.render_template('test.html')
 
-@app.route('/listen', methods=['GET'])
+"""@app.route('/listen', methods=['GET'])
 def listen():
 
     def stream():
@@ -90,7 +97,7 @@ def listen():
             msg = messages.get()  # blocks until a new message arrives
             yield msg
 
-    return flask.Response(stream(), mimetype='text/event-stream')
+    return flask.Response(stream(), mimetype='text/event-stream')"""
 
 """@app.route("/")
 def hello_world():
