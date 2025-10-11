@@ -1,16 +1,54 @@
 <html>
  <head>
-   <title>Flask Static Demo</title>
+   <title>Demo</title>
+     <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"
+    crossorigin="anonymous"></script>
  </head>
  <body>
-   
-   <h2>Live Messages</h2>
+  <div class="container">
+    <div id="roundNumRow" class="row bg-danger text-white fw-bold fs-2">
+      <div class="col-3">
+        Round:
+      </div>
+      <div id="roundNum" class="col-2">
+        -
+      </div>
+      <div class="col-3">
+        Group:
+      </div>
+      <div id="groupLetter" class="col-4">
+        -
+      </div>
+    </div>
+    <div id="roundNameRow" class="row bg-danger text-white fs-6 text-center">
+      <div id="roundDescription" class="col">
+        --------
+      </div>
+    </div>
+    <div id="sectionRow" class="row bg-danger text-white fw-bold fs-2 text-center">
+      <div id="sectionDescription" class="col">
+        -----
+      </div>
+    </div>
+    <div class="row">
+      <div id="bigTime" class="col text-center fst-normal" style="font-size: 30vw">--:--</div>
+    </div>
+    </div>
+    
+
+  <h5>Live Messages</h5>
    <textarea id="messageLog" rows="20" cols="80" readonly placeholder="Waiting for messages..."></textarea>
    
    <script>
      // Create EventSource connection to /listen endpoint
      const eventSource = new EventSource('/listen');
      const messageLog = document.getElementById('messageLog');
+     const bigTime = document.getElementById('bigTime');
      
      // Handle incoming messages
      eventSource.onmessage = function(event) {
@@ -23,7 +61,7 @@
        messageLog.scrollTop = messageLog.scrollHeight;
      };
     eventSource.addEventListener("pong", (event) => {
-console.log(event);
+      console.log(event);
       //const time = JSON.parse(event.data).time;
       const timestamp = new Date().toLocaleTimeString();
       const message = `[${timestamp}] ${event.data}\n`;
@@ -32,10 +70,11 @@ console.log(event);
       //eventList.appendChild(newElement);
     });
     eventSource.addEventListener("state", (event) => {
-console.log(event);
+      console.log(event);
       
       const timestamp = new Date().toLocaleTimeString();
       const message = `[${timestamp}] ${event.data}\n`;
+      bigTime.textContent = event.data.time_str;
       
       messageLog.value += message;
       

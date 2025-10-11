@@ -40,7 +40,8 @@ from flask_sse import sse
 app = flask.Flask(__name__)
 app.config["REDIS_URL"] = "redis://127.0.0.1"
 
-app.register_blueprint(sse, url_prefix='/listen')
+try: app.register_blueprint(sse, url_prefix='/listen')
+except: pass
 
 
 from f3k_cl_competition import Round, Group, make_rounds
