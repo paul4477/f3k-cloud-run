@@ -26,7 +26,7 @@ import time
 
 
 ###
-import cl_messages
+
 
 
 import flask
@@ -81,6 +81,7 @@ def listen():
 from typing import Callable, Optional
 announcer: Optional[cl_messages.MessageAnnouncer] = None
 with app.app_context():
+    import cl_messages
     announcer = cl_messages.MessageAnnouncer()
 
 """@app.route("/")
