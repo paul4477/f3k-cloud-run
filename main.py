@@ -1,5 +1,10 @@
 import os
 import time
+
+import cl_messages
+announcer = cl_messages.MessageAnnouncer()
+
+
 #import functions_framework
 #import yaml
 
@@ -86,13 +91,6 @@ def listen():
             yield msg
 
     return flask.Response(stream(), mimetype='text/event-stream')
-
-from typing import Callable, Optional
-import cl_messages
-announcer: Optional[cl_messages.MessageAnnouncer] = None
-with app.app_context():
-    
-    announcer = cl_messages.MessageAnnouncer()
 
 """@app.route("/")
 def hello_world():
