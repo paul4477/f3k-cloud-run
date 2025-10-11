@@ -14,13 +14,23 @@
      
      // Handle incoming messages
      eventSource.onmessage = function(event) {
-       const timestamp = new Date().toLocaleTimeString();
+      console.log(event); 
+      const timestamp = new Date().toLocaleTimeString();
        const message = `[${timestamp}] ${event.data}\n`;
        messageLog.value += message;
        
        // Auto-scroll to bottom
        messageLog.scrollTop = messageLog.scrollHeight;
      };
+    eventSource.addEventListener("pong", (event) => {
+console.log(event);
+      //const time = JSON.parse(event.data).time;
+      const timestamp = new Date().toLocaleTimeString();
+      const message = `[${timestamp}] ${event.data}\n`;
+      //newElement.textContent = `ping at ${time}`;
+      messageLog.value += message;
+      //eventList.appendChild(newElement);
+    });
      
      // Handle connection open
      eventSource.onopen = function(event) {
