@@ -1,0 +1,14 @@
+[Unit]
+Description=Gunicorn instance to serve f3k-cloud-run
+After=network.target
+
+[Service]
+User=paul_d_robinson
+Group=www-data
+
+WorkingDirectory=/home/paul_d_robinson/f3k-cloud-run
+Environment="PATH=/home/paul_d_robinson/f3k-cloud-run/f3k-cloud-runenv/bin"
+ExecStart=/home/paul_d_robinson/f3k-cloud-run/f3k-cloud-runenv/bin/gunicorn --timeout 120 --threads 5 -k gthread --workers 2 --bind unix:f3k-cloud-run.sock -m 007 wsgi:app
+
+[Install]
+WantedBy=multi-user.target
