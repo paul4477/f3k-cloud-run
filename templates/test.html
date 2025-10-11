@@ -1,0 +1,46 @@
+<html>
+ <head>
+   <title>Flask Static Demo</title>
+ </head>
+ <body>
+   
+   <h2>Live Messages</h2>
+   <textarea id="messageLog" rows="20" cols="80" readonly placeholder="Waiting for messages..."></textarea>
+   
+   <script>
+     // Create EventSource connection to /listen endpoint
+     const eventSource = new EventSource('/listen');
+     const messageLog = document.getElementById('messageLog');
+     
+     // Handle incoming messages
+     eventSource.onmessage = function(event) {
+       const timestamp = new Date().toLocaleTimeString();
+       const message = `[${timestamp}] ${event.data}\n`;
+       messageLog.value += message;
+       
+       // Auto-scroll to bottom
+       messageLog.scrollTop = messageLog.scrollHeight;
+     };
+     
+     // Handle connection open
+     eventSource.onopen = function(event) {
+       const timestamp = new Date().toLocaleTimeString();
+       messageLog.value += `[${timestamp}] Connected to event stream\n`;
+       messageLog.scrollTop = messageLog.scrollHeight;
+     };
+     
+     // Handle errors
+     eventSource.onerror = function(event) {
+       const timestamp = new Date().toLocaleTimeString();
+       messageLog.value += `[${timestamp}] Connection error or closed\n`;
+       messageLog.scrollTop = messageLog.scrollHeight;
+     };
+     
+     // Clean up on page unload
+     window.addEventListener('beforeunload', function() {
+       eventSource.close();
+     });
+   </script>
+   
+ </body>
+</html>
