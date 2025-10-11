@@ -79,7 +79,7 @@ def listen():
     return flask.Response(stream(), mimetype='text/event-stream')
 
 from typing import Callable, Optional
-scheduler: Optional[cl_messages.MessageAnnouncer] = None
+announcer: Optional[cl_messages.MessageAnnouncer] = None
 with app.app_context():
     announcer = cl_messages.MessageAnnouncer()
 
