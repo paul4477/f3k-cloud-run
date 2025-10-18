@@ -75,10 +75,10 @@ def view_event(event_id):
     return flask.render_template('event_viewer.html', event_id=event_id)
 
 @app.route('/api/event/<event_id>/state', methods=['POST'])
-def state():
+def state(event_id):
     data = flask.request.json
     # Channel should be a string
-    #sse.publish(data, type="state", channel=str(event_id))  
+    sse.publish(data, type="state", channel=str(event_id))  
     return {}, 200
 
 
