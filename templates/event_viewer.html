@@ -11,9 +11,9 @@
      const bigTime = document.getElementById('bigTime');
      
     eventSource.addEventListener("state", (event) => {
-      console.log(event);
+      //console.log(event);
       
-      data = event.data;
+      data = JSON.parse(event.data);
 
       document.getElementById('bigTime').textContent = data.time_str;
       document.getElementById('roundNum').textContent = data.round_num;
@@ -32,16 +32,19 @@
           document.getElementById('groupLetter').textContent += ` (${flightNum})`;
         }
       }
-      document.getElementById('roundDescription').textContent = data.task_name;
+      document.getElementById('roundDescription').textContent = data.task_name.split("- ")[1];
       document.getElementById('sectionDescription').textContent = data.section;
 
       const roundInfoRow = document.getElementById('roundInfoRow')
       const roundTimerRow = document.getElementById('roundTimerRow')
+      const homeBtn = document.getElementById('home')
       
 
       if (data.no_fly && roundInfoRow.classList.contains('bg-success')) {
         roundInfoRow.classList.remove('bg-success');
         roundInfoRow.classList.add('bg-danger');
+        homeBtn.classList.remove('btn-success');
+        homeBtn.classList.add('btn-danger');
         roundTimerRow.classList.remove('bg-success');
         roundTimerRow.classList.add('bg-danger');
       }
@@ -49,6 +52,8 @@
         if (!data.no_fly && roundInfoRow.classList.contains('bg-danger')) {
           roundInfoRow.classList.remove('bg-danger');
           roundInfoRow.classList.add('bg-success');
+          homeBtn.classList.remove('btn-danger');
+          homeBtn.classList.add('btn-success');
 
           roundTimerRow.classList.remove('bg-danger');
           roundTimerRow.classList.add('bg-success');
@@ -77,23 +82,23 @@
 
 <div id="roundInfoRow"class="row bg-danger text-white fw-bold fs-1">
 
-  <div class="col-2">
-     <a href="{{ url_for('index')}}" id="start" class="btn btn-danger btn-lg"><svg xmlns="http://www.w3.org/2000/svg" height="8vw" fill="white" class="bi bi-house" viewBox="0 0 16 16">
+  <div class="col-2 gx-0">
+     <a href="{{ url_for('index')}}" id="home" class="btn btn-danger btn-lg"><svg xmlns="http://www.w3.org/2000/svg" height="8vw" fill="white" class="bi bi-house" viewBox="0 0 16 16">
       <path d="M8.707 1.5a1 1 0 0 0-1.414 0L.646 8.146a.5.5 0 0 0 .708.708L2 8.207V13.5A1.5 1.5 0 0 0 3.5 15h9a1.5 1.5 0 0 0 1.5-1.5V8.207l.646.647a.5.5 0 0 0 .708-.708L13 5.793V2.5a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1.293zM13 7.207V13.5a.5.5 0 0 1-.5.5h-9a.5.5 0 0 1-.5-.5V7.207l5-5z"/>
     </svg></a>
   </div>
-  <div class="col-4"> 
-    <div class="row"><div class="col-6">Round</div><div class="col-3 text-center" id="roundNum">-</div></div>
-    <div class="row"><div class="col-6">Group</div><div class="col-3 text-center" id="groupLetter">-</div></div>
+  <div class="col-4 gx-0"> 
+    <div class="row gx-0"><div class="col">Round</div><div class="col text-center" id="roundNum">-</div></div>
+    <div class="row gx-0"><div class="col">Group</div><div class="col text-center" id="groupLetter">-</div></div>
   </div>
-<div class="col-3"> 
-    <div class="row" id="roundDescription">----</div>
+<div class="col-6"> 
+    <div class="row" id="roundDescription">No Data</div>
   </div>
   
 </div>
 
     <div id="roundTimerRow" class="row bg-danger text-white align-items-center">
-      <div class="col-7 gy-0" style="font-size: 6vw" id="sectionDescription">----</div>
+      <div class="col-7 gy-0" style="font-size: 6vw" id="sectionDescription">No Data</div>
       <div id="bigTime" class="col-5 text-center fst-normal gy-0" style="font-size: 10vw">--:--</div>
     </div>
 
