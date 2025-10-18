@@ -1,0 +1,269 @@
+
+{% extends 'base.html' %}
+{% block content %}
+    <h1 class="page-header">{% block title %}Event Search{% endblock %}</h1>
+    
+    <form class="form-inline" id="search-form" onsubmit="return false;">
+      <div class="form-group">
+        <input type="text" id="search-box" class="form-control" placeholder="Search for events">
+      </div>
+
+      <div class="form-group">
+        <select id="event-type" class="form-control">
+          <option value="f3k" selected>F3K</option>
+          <option value="f5j">F5J</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="country" class="sr-only">Country</label>
+        <input list="countries" id="country" class="form-control" value="GB" aria-label="Country">
+        <datalist id="countries">
+          <option value="GB">UK</option>
+          <option value="US">USA</option>
+          <option value="PO">Poland</option>
+          <option value="FR">France</option>
+          <option value="TH">Thailand</option>
+          <option value="SG">Singapore</option>
+        </datalist>
+      </div>
+
+      <div class="form-group">
+        <label for="date-from">From:</label>
+        <input type="date" id="date-from" class="form-control">
+      </div>
+
+      <div class="form-group">
+        <label for="date-to">To:</label>
+        <input type="date" id="date-to" class="form-control">
+      </div>
+
+      <button id="search-btn" class="btn btn-primary">Search</button>
+    </form>
+    
+    <h2>Events</h2>
+    <ul id="event-list" class="list-group"></ul>
+
+    <h3>Event Details</h3>
+    <div id="event-details"></div>
+  </div>
+
+  <script>
+    // Replace these with real credentials / base URL
+    const baseUrl = "https://f3xvault.com/api.php";
+    const login = "guest";
+    const password = "Guest1234";
+
+    // Will hold the raw event JSON (the event object) to POST to /load_event
+    let lastEventJson = null;
+
+    function formatDate(date) {
+      return date.toISOString().split("T")[0];
+    }
+
+    function getDefaultDateRange() {
+      const now = new Date();
+      const dateFrom = new Date(now);
+      dateFrom.setMonth(dateFrom.getMonth() - 1);
+      const dateTo = new Date(now);
+      dateTo.setDate(dateTo.getDate() + 14);
+      return { date_from: formatDate(dateFrom), date_to: formatDate(dateTo) };
+    }
+
+    function buildQuery(params) {
+      return new URLSearchParams(params).toString();
+    }
+
+    async function apiRequest(baseUrl, login, password, func, extraParams = {}) {
+      const params = {
+        login,
+        password,
+        function: func,
+        output_format: "json",
+        ...extraParams,
+      };
+      const url = `${baseUrl}?${buildQuery(params)}`;
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+      return await response.json();
+    }
+
+    // Use "searchEvents" as the function name sent to the API
+    async function searchEvents(baseUrl, login, password, {
+      string,
+      event_type_code = "f3k",
+      country = "GB",
+      date_from,
+      date_to,
+    } = {}) {
+      if (!string || typeof string !== "string") {
+        string = "";
+      }
+      const allowedTypes = ["f3k", "f5j"];
+      if (!allowedTypes.includes(event_type_code)) {
+        throw new Error(`Invalid event_type_code. Must be one of: ${allowedTypes.join(", ")}`);
+      }
+      const defaults = getDefaultDateRange();
+      return apiRequest(baseUrl, login, password, "searchEvents", {
+        string,
+        event_type_code,
+        country,
+        date_from: date_from || defaults.date_from,
+        date_to: date_to || defaults.date_to,
+      });
+    }
+
+    async function getEventInfoFull(baseUrl, login, password, event_id) {
+      if (!event_id) throw new Error("Parameter 'event_id' is required.");
+      return apiRequest(baseUrl, login, password, "getEventInfoFull", { event_id });
+    }
+
+    async function populateEvents(searchString = "") {
+      try {
+        const eventType = document.getElementById("event-type").value;
+        const country = document.getElementById("country").value;
+        const dateFrom = document.getElementById("date-from").value;
+        const dateTo = document.getElementById("date-to").value;
+
+        const result = await searchEvents(baseUrl, login, password, {
+          string: searchString,
+          event_type_code: eventType,
+          country: country,
+          date_from: dateFrom,
+          date_to: dateTo,
+        });
+
+        const events = result.events || [];
+        const list = document.getElementById("event-list");
+        list.innerHTML = "";
+        events.forEach(ev => {
+          const li = document.createElement("li");
+          li.className = "list-group-item";
+          li.textContent = ev.event_name || ev.name || "Unnamed event";
+          li.dataset.eventId = ev.event_id;
+          li.onclick = async () => {
+            try {
+              const detailsResp = await getEventInfoFull(baseUrl, login, password, ev.event_id);
+              // per your note: the useful data is in detailsResp.event
+              const eventObj = (detailsResp && detailsResp.event) ? detailsResp.event : detailsResp;
+              lastEventJson = detailsResp;           // store the raw event object for POST
+              renderEventDetails(eventObj);      // pass details.event into renderer
+            } catch (err) {
+              console.error(err);
+              alert("Error fetching event details: " + err.message);
+            }
+          };
+          list.appendChild(li);
+        });
+      } catch (err) {
+        console.error(err);
+        alert("Error fetching events: " + err.message);
+      }
+    }
+
+function renderEventDetails(details) {
+  const container = document.getElementById("event-details");
+  container.innerHTML = "";
+
+  if (!details || typeof details !== "object") {
+    container.textContent = "No details available.";
+    return;
+  }
+
+  const panel = document.createElement("div");
+  panel.className = "panel panel-info";
+
+  // Panel heading
+  const heading = document.createElement("div");
+  heading.className = "panel-heading";
+  heading.textContent = details.event_name || details.name || "Event Details";
+  panel.appendChild(heading);
+
+  // Panel body with two columns
+  const body = document.createElement("div");
+  body.className = "panel-body row";
+
+  // Left column: main event info
+  const leftCol = document.createElement("div");
+  leftCol.className = "col-md-6";
+  leftCol.innerHTML = `
+    <p><strong>ID:</strong> ${details.event_id || details.id || "N/A"}</p>
+    <p><strong>Location:</strong> ${details.location_name || "N/A"}, ${details.country_code || "N/A"}</p>
+    <p><strong>From:</strong> ${details.start_date || "N/A"}</p>
+    <p><strong>To:</strong> ${details.end_date || "N/A"}</p>
+  `;
+
+  // Right column: Pilots list
+  const rightCol = document.createElement("div");
+  rightCol.className = "col-md-6";
+
+  if (Array.isArray(details.pilots) && details.pilots.length > 0) {
+    let pilotsHtml = `<p><strong>Pilots:</strong></p><ul class="list-group">`;
+    details.pilots.forEach(pilot => {
+      pilotsHtml += `<li class="list-group-item">${pilot.pilot_first_name || ""} ${pilot.pilot_last_name || ""}</li>`;
+    });
+    pilotsHtml += `</ul>`;
+    rightCol.innerHTML = pilotsHtml;
+  } else {
+    rightCol.innerHTML = `<p><strong>Pilots:</strong> None</p>`;
+  }
+
+  body.appendChild(leftCol);
+  body.appendChild(rightCol);
+  panel.appendChild(body);
+
+  // Panel footer with Load Event button
+  const footer = document.createElement("div");
+  footer.className = "panel-footer";
+
+  const loadBtn = document.createElement("button");
+  loadBtn.className = "btn btn-success";
+  loadBtn.textContent = "Load Event";
+  loadBtn.onclick = async () => {
+    if (!lastEventJson) {
+      alert("No event JSON available to send.");
+      return;
+    }
+    try {
+      const res = await fetch("/api/event/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(lastEventJson)
+        
+      });
+      //console.log("Redirecting to:", res.url);
+      if (res.redirected) {
+        console.log("Redirecting to:", res.url);
+        window.location.href = res.url; // follow the redirect
+        return;
+      }
+    } catch (err) {
+      alert("Error sending event: " + err.message);
+    }
+  };
+
+  footer.appendChild(loadBtn);
+  panel.appendChild(footer);
+
+  container.appendChild(panel);
+}
+
+
+    // wire up search button
+    document.getElementById("search-btn").addEventListener("click", () => {
+      const query = document.getElementById("search-box").value.trim();
+      populateEvents(query);
+    });
+
+    // initialize date pickers and initial load
+    window.onload = () => {
+      const defaults = getDefaultDateRange();
+      document.getElementById("date-from").value = defaults.date_from;
+      document.getElementById("date-to").value = defaults.date_to;
+      populateEvents();
+    };
+  </script>
+
+{% endblock %}

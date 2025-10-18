@@ -1,115 +1,90 @@
 import os
 import time
-
-import cl_messages
-announcer = cl_messages.MessageAnnouncer()
-
-
-#import functions_framework
-#import yaml
-
-
-##
-## Event class in separate file
-## GET / show event list
-##  init creates rounds, groups and sections from POSTed json to /{event id}
-## add the event to global dict of events
-## persist it somewhere (individual events)
-## GET /{event id} returns json of event (summary) [if we haven't got it cached then we load it from f3xvault and transform to our local structure]
-## GET /{event id}/round/{round number} returns json of round
-## GET /{event id}/round/{round number}/group/{group letter} returns json of group
-## GET /{event id}/round/{round number}/group/{group letter}/section/{section index} returns json of section
-
-## GET /{event id}/state ## polled by client for updates
-#https://flask-sse.readthedocs.io/en/latest/quickstart.html
-# if client sees section change then they can request the details of the new section
-# on group change the client can request the pilot list (and perhaps the next one too?)
-## where does the pilot list from in?
-
-## POST /{event id}/timer # receives frequent time updates (every second?) from the event runner - can we ws or stream this? reconnect when needed? is htat reliable?
-## POST /{event id}/state # receives state changes - round, group, section changes including pilot lists for groups
-
-
-###
-
-
 import flask
-from flask import Flask, render_template
+import json
+
+from flask import Flask, render_template, request, redirect, url_for
 from flask_sse import sse
 
 app = flask.Flask(__name__)
 app.config["REDIS_URL"] = "redis://127.0.0.1"
 
-try: app.register_blueprint(sse, url_prefix='/listen')
+try: app.register_blueprint(sse, url_prefix='/eventsource')
 except: pass
 
+## State is only maintained in the client as far as the timing, round progression etc is concerned.
+## Server side is just a data holder and broadcaster (forwarder) of state changes via SSE.
 
-from f3k_cl_competition import Round, Group, make_rounds
+## Front end routes:
+## / - event picker - redirects to /event/<event-id> (render template)
+## /event/<event-id> - show state, matrix and groups (maybe allow highlighting of pilots  ) (render template)
+## /eventsource?channel=<event-id> - SSE endpoint for event updates
 
+## API routes:
+## /api/event - POST - create event and save to in-memory dict
+## /api/event/<event-id>/state - POST - update event state - triggers SSE message
 
-import json
-data = json.load(open('data/test_data.json'))
-rounds = make_rounds(data)
-
-def custom_json(obj):
-    if isinstance(obj, Round):
-        return {'round_number': obj.round_number, 'groups': obj.groups}
-    if isinstance(obj, Group):
-        return {'group_letter': obj.group_letter, 'sections': obj.sections}
-    if isinstance(obj, Section):
-        return {'section_type': obj.__class.__name__, 'section_time': obj.sectionTime}
-    raise TypeError(f'Cannot serialize object of {type(obj)}')
-
-def format_sse(data: str, event=None) -> str:
-    msg = f'data: {data}\n\n'
-    if event is not None:
-        msg = f'event: {event}\n{msg}'
-    return msg
+## /api/event/<event-id> - GET only, shows event summary details
+## /api/event/<event-id>/round/<round-number> - GET only, shows round details
+## /api/event/<event-id>/round/<round-number>/group/<group-letter> - GET only, shows group details
 
 
-@app.route('/ping')
-def ping():
-    msg = format_sse(data=time.time(), event="pong")
-    #announcer.announce(msg=msg)
-    sse.publish({'time':time.time()}, type="pong")
-    return {}, 200
+import f3k_cl_competition
+
+# Global dictionary to store events
+events = {}
+
+@app.route('/api/event/', methods=['POST'])
+def create_event(): 
+    """Create a new event"""
+    data = flask.request.json
+    print(data['event']['event_id'])
+    if 'event_id' not in data['event']:
+        return flask.jsonify({'error': 'event_id required'}), 400
+    
+    event = f3k_cl_competition.f3k_event(data)
+    events[event.event_id] = event
+    print (events)
+    
+    # Publish event creation via SSE
+    #sse.publish({'event_id': event.event_id, 'action': 'created'}, type="event")
+    
+    #return flask.jsonify({'event_id': event.event_id, 'status': 'created'}), 201
+    return redirect(url_for('view_event', event_id=event.event_id))
 
 
-@app.route('/state', methods=['POST'])
+@app.route('/api/event/<int:event_id>', methods=['GET'])
+def get_event(event_id): 
+    """GET JSON of a specific event"""
+    if event_id not in events:
+        return flask.jsonify({'error': 'Event not found'}), 404
+    
+    event = events[event_id]
+    return flask.jsonify({
+        'event_id': event.event_id,
+        'rounds': [{'round_number': r.round_number, 'task_name': r.task_name} for r in event.rounds],
+        'current_round': event.current_round,
+        'current_group': event.current_group,
+        'pilots': list(str(p) for p in event.pilots.values())
+    })
+
+@app.route('/event/<int:event_id>', methods=['GET'])
+def view_event(event_id):
+    """Client page to view event status"""
+
+    return flask.render_template('event_viewer.html', event_id=event_id)
+
+@app.route('/api/event/<event_id>/state', methods=['POST'])
 def state():
     data = flask.request.json
-    #msg = format_sse(data, event="state")
-    sse.publish(data, type="state")
-    #announcer.announce(msg=msg)
+    # Channel should be a string
+    #sse.publish(data, type="state", channel=str(event_id))  
     return {}, 200
 
 
 @app.route("/")
-def hello():
-    
-    return flask.render_template('test.html')
-
-"""@app.route('/listen', methods=['GET'])
-def listen():
-
-    def stream():
-        messages = announcer.listen()  # returns a queue.Queue
-        while True:
-            msg = messages.get()  # blocks until a new message arrives
-            yield msg
-
-    return flask.Response(stream(), mimetype='text/event-stream')"""
-
-"""@app.route("/")
-def hello_world():
-    #ame = os.environ.get("NAME", "World")
-    out = {}
-    for r in rounds:
-        for g in r:
-            for s in g.sections:
-                out[s.get_serial_code()] = s.get_description()
-    return json.dumps({'data': rounds, 'o': out}, default=custom_json)"""
-
+def index():
+    return flask.render_template('event_selector.html')
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
