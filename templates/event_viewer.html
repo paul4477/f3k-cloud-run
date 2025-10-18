@@ -248,7 +248,7 @@ class F3KGroupCarousel {
             <div id="${carouselId}" class="carousel slide carousel-dark" data-bs-interval="false">
                 ${this.createIndicators(carouselId)}
                 ${this.createSlideContent()}
-                ${this.createNavigationControls(carouselId)}
+              
             </div>
         `;
 
@@ -338,6 +338,10 @@ class F3KGroupCarousel {
                 this.carouselElement.next();
             }
         });
+        document.getElementById(`groupCarousel_${this.eventId}`).addEventListener('slid.bs.carousel', (event) => {
+            console.log('Slide changed to index:', event.to, timer);
+            timer.reset(15000);
+        });
     }
 
     displayErrorMessage(message) {
@@ -380,11 +384,39 @@ function createGroupCarousel(eventId, containerId = 'carousel-container') {
     return carousel;
 }
 
-     groupCarousel = createGroupCarousel(event_id, containerId = 'carousel-container')
-     const navigateInterval = setInterval(() => {
-      console.log("Navigating to round/group:", document.getElementById('roundNum').textContent, document.getElementById('groupLetter').textContent);  
-      groupCarousel.navigateToGroup(document.getElementById('roundNum').textContent, document.getElementById('groupLetter').textContent);
-     }, 2000);
+function Timer(fn, t) {
+    var timerObj = setInterval(fn, t);
+
+    this.stop = function() {
+        if (timerObj) {
+            clearInterval(timerObj);
+            timerObj = null;
+        }
+        return this;
+    }
+
+    // start timer using current settings (if it's not already running)
+    this.start = function() {
+        if (!timerObj) {
+            this.stop();
+            timerObj = setInterval(fn, t);
+        }
+        return this;
+    }
+
+    // start with new or original interval, stop current interval
+    this.reset = function(newT = t) {
+        t = newT;
+        return this.stop().start();
+    }
+}
+
+groupCarousel = createGroupCarousel(event_id, containerId = 'carousel-container')
+
+var timer = new Timer(function() {
+  groupCarousel.navigateToGroup(document.getElementById('roundNum').textContent, document.getElementById('groupLetter').textContent);
+}, 15000);
+
 
 // Call the function when the page loads
 document.addEventListener('DOMContentLoaded', createRoundGroupTable);     
