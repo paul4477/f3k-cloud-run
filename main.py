@@ -60,12 +60,57 @@ def get_event(event_id):
         return flask.jsonify({'error': 'Event not found'}), 404
     
     event = events[event_id]
+    return flask.jsonify({'rounds': [ 
+        [
+            (g.group_letter, list(event.pilots[p].name for p in g.pilots))
+            for g in r.groups
+            ]
+        for r in event.rounds
+    ]})
+
+### /api/event/<event-id>/round/<round-number> 
+@app.route('/api/event/<int:event_id>/round/<int:round_number>', methods=['GET'])
+def get_event_round(event_id, round_number): 
+    """GET JSON of a specific event round"""
+    if event_id not in events:
+        return flask.jsonify({'error': 'Event not found'}), 404
+
+    event = events[event_id]
+    if round_number < 1 or round_number > len(event.rounds):
+        return flask.jsonify({'error': 'Round not found'}), 404
+
+    round_data = event.rounds[round_number - 1]
     return flask.jsonify({
-        'event_id': event.event_id,
-        'rounds': [{'round_number': r.round_number, 'task_name': r.task_name} for r in event.rounds],
-        'current_round': event.current_round,
-        'current_group': event.current_group,
-        'pilots': list(str(p) for p in event.pilots.values())
+        'round_number': round_data.round_number,
+        'task_name': round_data.task_name,
+        'groups': [
+            {
+                'letter': g.group_letter,
+                'pilots': [event.pilots[p].name for p in g.pilots]
+            }
+            for g in round_data.groups
+        ]
+    })
+
+### /api/event/<event-id>/round/<round-number>/group/<group-letter> 
+@app.route('/api/event/<int:event_id>/round/<int:round_number>/group/<group_letter>', methods=['GET'])
+def get_event_round_group(event_id, round_number, group_letter): 
+    """GET JSON of a specific event round group"""
+    if event_id not in events:
+        return flask.jsonify({'error': 'Event not found'}), 404
+
+    event = events[event_id]
+    if round_number < 1 or round_number > len(event.rounds):
+        return flask.jsonify({'error': 'Round not found'}), 404
+
+    round_data = event.rounds[round_number - 1]
+    group_data = next((g for g in round_data.groups if g.group_letter == group_letter), None)
+    if not group_data:
+        return flask.jsonify({'error': 'Group not found'}), 404
+
+    return flask.jsonify({
+        'group_letter': group_data.group_letter,
+        'pilots': [event.pilots[p].name for p in group_data.pilots]
     })
 
 @app.route('/event/<int:event_id>', methods=['GET'])
@@ -78,7 +123,7 @@ def view_event(event_id):
 def state(event_id):
     data = flask.request.json
     # Channel should be a string
-    sse.publish(data, type="state", channel=str(event_id))  
+    #sse.publish(data, type="state", channel=str(event_id))  
     return {}, 200
 
 

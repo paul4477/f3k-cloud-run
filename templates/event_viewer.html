@@ -6,10 +6,12 @@
      const eventSource = new EventSource('{{ url_for("sse.stream", channel=event_id) }}');
      const event_id = {{ event_id }};
      console.log("Listening for event ID:", event_id);
-     
+     let groupCarousel;
+    
      //const messageLog = document.getElementById('messageLog');
      const bigTime = document.getElementById('bigTime');
      
+
     eventSource.addEventListener("state", (event) => {
       //console.log(event);
       
@@ -17,7 +19,11 @@
 
       document.getElementById('bigTime').textContent = data.time_str;
       document.getElementById('roundNum').textContent = data.round_num;
+      
       document.getElementById('groupLetter').textContent = data.group_let;
+      
+      
+      
       // Only append flight number if > 1, unless task_name starts with "F3K Task C"
       let showFlightNum = false;
       if ("flight_num" in data && !isNaN(parseInt(data.flight_num))) {
@@ -78,9 +84,313 @@
      window.addEventListener('beforeunload', function() {
        eventSource.close();
      });
+
+
+async function createRoundGroupTable() {
+    try {
+        // Fetch the JSON data
+        const response = await fetch('{{ url_for("get_event", event_id=event_id) }}');
+        const data = await response.json();
+        
+        // Extract all unique pilot names
+        const pilots = new Set();
+        data.rounds.forEach(round => {
+            round.forEach(group => {
+                group[1].forEach(pilot => pilots.add(pilot));
+            });
+        });
+        
+        // Sort pilots alphabetically
+        const sortedPilots = Array.from(pilots).sort();
+        
+        // Create the table element
+        const table = document.createElement('table');
+        table.style.borderCollapse = 'collapse';
+        table.style.width = '100%';
+        
+        // Create header row
+        const headerRow = document.createElement('tr');
+        
+        // Add empty cell for pilot names column
+        const emptyHeader = document.createElement('th');
+        emptyHeader.textContent = 'Pilot';
+        emptyHeader.style.border = '1px solid #ddd';
+        emptyHeader.style.padding = '8px';
+        emptyHeader.style.backgroundColor = '#f2f2f2';
+        headerRow.appendChild(emptyHeader);
+        
+        // Add round number headers
+        data.rounds.forEach((round, index) => {
+            const roundHeader = document.createElement('th');
+            roundHeader.textContent = `Round ${index + 1}`;
+            roundHeader.style.border = '1px solid #ddd';
+            roundHeader.style.padding = '8px';
+            roundHeader.style.backgroundColor = '#f2f2f2';
+            roundHeader.style.textAlign = 'center';
+            headerRow.appendChild(roundHeader);
+        });
+        
+        table.appendChild(headerRow);
+        
+        // Create data rows for each pilot
+        sortedPilots.forEach(pilot => {
+            const row = document.createElement('tr');
+            
+            // Add pilot name cell
+            const pilotCell = document.createElement('td');
+            pilotCell.textContent = pilot;
+            pilotCell.style.border = '1px solid #ddd';
+            pilotCell.style.padding = '8px';
+            pilotCell.style.fontWeight = 'bold';
+            pilotCell.style.backgroundColor = '#f9f9f9';
+            row.appendChild(pilotCell);
+            
+            // Add group letter for each round
+            data.rounds.forEach(round => {
+                const groupCell = document.createElement('td');
+                
+                // Find which group this pilot is in for this round
+                let groupLetter = '';
+                round.forEach(group => {
+                    if (group[1].includes(pilot)) {
+                        groupLetter = group[0];
+                    }
+                });
+                
+                groupCell.textContent = groupLetter;
+                groupCell.style.border = '1px solid #ddd';
+                groupCell.style.padding = '8px';
+                groupCell.style.textAlign = 'center';
+                
+                // Optional: Add color coding for different groups
+                const colors = {
+                    'A': '#ffebee',
+                    'B': '#e8f5e8',
+                    'C': '#e3f2fd'
+                };
+                if (colors[groupLetter]) {
+                    groupCell.style.backgroundColor = colors[groupLetter];
+                }
+                
+                row.appendChild(groupCell);
+            });
+            
+            table.appendChild(row);
+        });
+        
+        // Add table to the page (assuming there's a container element)
+        const container = document.getElementById('table-container') || document.body;
+        container.appendChild(table);
+        
+    } catch (error) {
+        console.error('Error loading or parsing JSON:', error);
+    }
+}
+
+// filepath: c:\Users\Paul.Robinson\Documents\Personal Git Checkouts\f3k-cloud-run\static\js\group-carousel.js
+class F3KGroupCarousel {
+    constructor(eventId, targetElement) {
+        this.eventId = eventId;
+        this.targetElement = targetElement;
+        this.groupSlides = [];
+        this.carouselElement = null;
+    }
+
+    async initialize() {
+        try {
+            await this.fetchRoundData();
+            this.buildCarouselHTML();
+            this.attachEventListeners();
+        } catch (error) {
+            console.error('Carousel initialization failed:', error);
+            this.displayErrorMessage(error.message);
+        }
+    }
+
+    async fetchRoundData() {
+        // Get event overview first
+        const eventResponse = await fetch(`/api/event/${this.eventId}`);
+        const eventData = await eventResponse.json();
+        
+        if (eventData.error) {
+            throw new Error(eventData.error);
+        }
+
+        const totalRounds = eventData.rounds.length;
+        this.groupSlides = [];
+
+        // Fetch detailed round information
+        for (let roundNum = 1; roundNum <= totalRounds; roundNum++) {
+            const roundResponse = await fetch(`/api/event/${this.eventId}/round/${roundNum}`);
+            const roundData = await roundResponse.json();
+            
+            if (roundData.error) {
+                console.warn(`Round ${roundNum} data unavailable:`, roundData.error);
+                continue;
+            }
+
+            // Process each group in the round
+            roundData.groups.forEach(groupInfo => {
+                this.groupSlides.push({
+                    roundNum: roundData.round_number,
+                    taskDescription: roundData.task_name,
+                    groupId: groupInfo.letter,
+                    memberList: groupInfo.pilots
+                });
+            });
+        }
+    }
+
+    buildCarouselHTML() {
+        const carouselId = `groupCarousel_${this.eventId}`;
+        
+        const carouselStructure = `
+            <div id="${carouselId}" class="carousel slide carousel-dark" data-bs-interval="false">
+                ${this.createIndicators(carouselId)}
+                ${this.createSlideContent()}
+                ${this.createNavigationControls(carouselId)}
+            </div>
+        `;
+
+        document.getElementById(this.targetElement).innerHTML = carouselStructure;
+        
+        // Initialize Bootstrap carousel component
+        this.carouselElement = new bootstrap.Carousel(document.getElementById(carouselId), {
+            interval: false,
+            keyboard: true,
+            pause: 'hover'
+        });
+    }
+
+    createIndicators(carouselId) {
+        const indicators = this.groupSlides.map((_, index) => 
+            `<button type="button" data-bs-target="#${carouselId}" data-bs-slide-to="${index}" 
+             ${index === 0 ? 'class="active" aria-current="true"' : ''} 
+             aria-label="Group ${index + 1}"></button>`
+        ).join('');
+
+        return `
+            <div class="carousel-indicators">
+                ${indicators}
+            </div>
+        `;
+    }
+
+    createSlideContent() {
+        const slides = this.groupSlides.map((slideData, index) => {
+            const pilotItems = slideData.memberList.map(pilotName => 
+                `<li class="list-group-item d-flex align-items-center">
+                    <strong>${pilotName}</strong>
+                </li>`
+            ).join('');
+
+            return `
+                <div class="carousel-item ${index === 0 ? 'active' : ''}">
+                    <div class="container">
+                        <div class="row justify-content-center">
+                            <div class="col-md-8 col-lg-6">
+                                <div class="card">
+                                    <div class="card-header bg-secondary text-white text-center">
+                                        <h3 class="mb-1">Round ${slideData.roundNum} • Group ${slideData.groupId}</h3>
+                                        <p class="mb-0 opacity-75">
+                                            ${slideData.taskDescription || 'Task details pending'}
+                                        </p>
+                                    </div>
+                                    <div class="card-body">
+                                        <ul class="list-group list-group-flush">
+                                            ${pilotItems}
+                                        </ul>
+                                    </div>
+                                    <div class="card-footer text-muted text-center">
+
+                                        
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        return `<div class="carousel-inner">${slides}</div>`;
+    }
+
+    createNavigationControls(carouselId) {
+        return `
+            <button class="carousel-control-prev" type="button" data-bs-target="#${carouselId}" data-bs-slide="prev">
+                <span class="carousel-control-prev-icon"></span>
+                <span class="visually-hidden">Previous group</span>
+            </button>
+            <button class="carousel-control-next" type="button" data-bs-target="#${carouselId}" data-bs-slide="next">
+                <span class="carousel-control-next-icon"></span>
+                <span class="visually-hidden">Next group</span>
+            </button>
+        `;
+    }
+
+    attachEventListeners() {
+        // Add keyboard navigation
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'ArrowLeft') {
+                this.carouselElement.prev();
+            } else if (event.key === 'ArrowRight') {
+                this.carouselElement.next();
+            }
+        });
+    }
+
+    displayErrorMessage(message) {
+        document.getElementById(this.targetElement).innerHTML = `
+            <div class="alert alert-warning text-center" role="alert">
+                <h4 class="alert-heading">Unable to Load Group Data</h4>
+                <p class="mb-0">${message}</p>
+                <hr>
+                <button class="btn btn-outline-primary" onclick="location.reload()">
+                    Try Again
+                </button>
+            </div>
+        `;
+    }
+
+    // Public method to jump to a specific round
+    navigateToRound(roundNumber) {
+        const targetIndex = this.groupSlides.findIndex(slide => slide.roundNum === parseInt);
+        if (targetIndex !== -1) {
+            this.carouselElement.to(targetIndex);
+        }
+    }
+
+    // Public method to jump to specific group
+    navigateToGroup(roundNumber, groupLetter) {
+
+      const targetIndex = this.groupSlides.findIndex(slide => 
+            slide.roundNum === parseInt(roundNumber) && slide.groupId === groupLetter
+        );
+        if (targetIndex !== -1) {
+            this.carouselElement.to(targetIndex);
+        }
+    }
+}
+
+// Initialization function
+function createGroupCarousel(eventId, containerId = 'carousel-container') {
+    carousel = new F3KGroupCarousel(eventId, containerId);
+    carousel.initialize();
+    return carousel;
+}
+
+     groupCarousel = createGroupCarousel(event_id, containerId = 'carousel-container')
+     const navigateInterval = setInterval(() => {
+      console.log("Navigating to round/group:", document.getElementById('roundNum').textContent, document.getElementById('groupLetter').textContent);  
+      groupCarousel.navigateToGroup(document.getElementById('roundNum').textContent, document.getElementById('groupLetter').textContent);
+     }, 2000);
+
+// Call the function when the page loads
+document.addEventListener('DOMContentLoaded', createRoundGroupTable);     
    </script>
 
-<div id="roundInfoRow"class="row bg-danger text-white fw-bold fs-1">
+<div id="roundInfoRow" class="row bg-danger text-white fw-bold fs-1">
 
   <div class="col-2 gx-0">
      <a href="{{ url_for('index')}}" id="home" class="btn btn-danger btn-lg"><svg xmlns="http://www.w3.org/2000/svg" height="8vw" fill="white" class="bi bi-house" viewBox="0 0 16 16">
@@ -88,16 +398,14 @@
     </svg></a>
   </div>
   <div class="col-4 gx-0"> 
-    <div class="row gx-0"><div class="col">Round</div><div class="col text-center" id="roundNum">-</div></div>
-    <div class="row gx-0"><div class="col">Group</div><div class="col text-center" id="groupLetter">-</div></div>
+    <div class="row gx-0"><div class="col">Round</div><div class="col text-center" id="roundNum">2</div></div>
+    <div class="row gx-0"><div class="col">Group</div><div class="col text-center" id="groupLetter">B</div></div>
   </div>
 <div class="col-6"> 
     <div class="row" id="roundDescription">No Data</div>
   </div>
-  
-</div>
-
-    <div id="roundTimerRow" class="row bg-danger text-white align-items-center">
+  </div>
+      <div id="roundTimerRow" class="row bg-danger text-white align-items-center">
       <div class="col-7 gy-0" style="font-size: 6vw" id="sectionDescription">No Data</div>
       <div id="bigTime" class="col-5 text-center fst-normal gy-0" style="font-size: 10vw">--:--</div>
     </div>
@@ -105,7 +413,44 @@
 
 
 
-    </div>
+<div class="row">
+
+
+
+<ul class="nav nav-tabs nav-fill" id="myTab" role="tablist">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link active" id="matrix-tab" data-bs-toggle="tab" data-bs-target="#matrix-tab-pane" type="button" role="tab" aria-controls="matrix-tab-pane" aria-selected="true">Matrix</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="groups-tab" data-bs-toggle="tab" data-bs-target="#groups-tab-pane" type="button" role="tab" aria-controls="groups-tab-pane" aria-selected="false">Groups</button>
+  </li>
+</ul>
+<div class="tab-content" id="myTabContent">
+  <div class="tab-pane fade show active" id="matrix-tab-pane" role="tabpanel" aria-labelledby="matrix-tab" tabindex="0">
+    <div id="table-container" class="row"></div>
+  </div>
+  <div class="tab-pane fade" id="groups-tab-pane" role="tabpanel" aria-labelledby="groups-tab" tabindex="0">
+    
+<div id="carousel-container">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading groups...</span>
+                        </div>
+                        <p class="mt-2">Loading competition groups...</p>
+                    </div>
+                </div>
+  </div>
+</div>
+</div>
+
+
+</ul>
+
+    
+
+
+
+ 
     
 
 {% endblock %}
