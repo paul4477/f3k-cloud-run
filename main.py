@@ -123,7 +123,7 @@ def view_event(event_id):
 def state(event_id):
     data = flask.request.json
     # Channel should be a string
-    #sse.publish(data, type="state", channel=str(event_id))  
+    sse.publish(data, type="state", channel=str(event_id))  
     return {}, 200
 
 
