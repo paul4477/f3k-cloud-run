@@ -17,17 +17,17 @@
       
       data = JSON.parse(event.data);
 
-      document.getElementById('bigTime').textContent = data.time_str;
-      document.getElementById('roundNum').textContent = data.round_num;
+      document.getElementById('bigTime').textContent = data.time_s;
+      document.getElementById('roundNum').textContent = data.r_num;
       
-      document.getElementById('groupLetter').textContent = data.group_let;
+      document.getElementById('groupLetter').textContent = data.g_let;
       
       
       
       // Only append flight number if > 1, unless task_name starts with "F3K Task C"
       let showFlightNum = false;
-      if ("flight_num" in data && !isNaN(parseInt(data.flight_num))) {
-        const flightNum = parseInt(data.flight_num);
+      if ("f_num" in data && !isNaN(parseInt(data.f_num))) {
+        const flightNum = parseInt(data.f_num);
         if (
           (flightNum > 1) ||
           (typeof data.task_name === "string" && data.task_name.startsWith("F3K Task C"))
@@ -39,7 +39,7 @@
         }
       }
       document.getElementById('roundDescription').textContent = data.task_name.split("- ")[1];
-      document.getElementById('sectionDescription').textContent = data.section;
+      document.getElementById('sectionDescription').textContent = data.sect;
 
       const roundInfoRow = document.getElementById('roundInfoRow')
       const roundTimerRow = document.getElementById('roundTimerRow')
@@ -446,7 +446,7 @@ document.addEventListener('DOMContentLoaded', createRoundGroupTable);
 
 <div class="row">&nbsp;</div>
 <div class="row">
-<ul class="nav nav-tabs nav-fill nav-underline  " id="myTab" role="tablist">
+<ul class="nav nav-tabs nav-fill nav-underline" id="myTab" role="tablist">
   <li class="nav-item" role="presentation">
     <button class="nav-link active" id="matrix-tab" data-bs-toggle="tab" data-bs-target="#matrix-tab-pane" type="button" role="tab" aria-controls="matrix-tab-pane" aria-selected="true">Matrix</button>
   </li>
