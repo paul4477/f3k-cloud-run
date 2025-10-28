@@ -4,7 +4,7 @@ from task_data import f3k_task_timing_data
 
 class Group:
     """
-    Represents a group within a round. Can generate its timing sections (prep, no-fly, work, land, gap).
+    Represents a group within a round.
     """
     def __init__(self, group_number, group_letter, round_obj, pilot_list, event_config=None):
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -14,10 +14,8 @@ class Group:
         self.pilots = pilot_list  # List of pilot IDs in this group
         self.logger.debug(f"Group got config {event_config}")
         self.event_config = event_config or {}
-        # Example: self.sections = list(self.sections_iter())
-        
+                
         self.sections = []
-        #self.populate_sections()
         self.announce_sound = None
         self.announce_sound_generating = False
 
@@ -35,13 +33,6 @@ class AllUpGroup(Group):
                 self.logger.error(f"Unexpected round short_code in All Up group: {round_obj.short_code}")
         super().__init__(group_number, group_letter, round_obj, pilot_list, event_config=None)
 
-
-
-# Example usage:
-# round_obj = Round('f3k_a', 'A', 1)
-# group = Group(1, round_obj, event_config={'prep_time': 60, 'no_fly_time': 30})
-# for section, duration in group:
-#     print(section, duration)
 
 class Round():
     def __init__(self, short_code, short_name, round_number, event_config=None):
@@ -66,11 +57,10 @@ class Round():
     def populate_groups(self):
         groups = {}
         letters= "-ABCDEFGHIJKLMNOPQRSTUVWXYZ" # Adding '-' so index matches group number
-        #print (self.round_number)
+
         for pilot in self.standings_data:
             pilot_id = pilot['pilot_id']
             
-            # prelim_standings.standings[pilot.rounds[round.flights[flight_group]]]
             if len(pilot['rounds']) >= 0:
                 # Only look at this round
                 try: round_data = pilot['rounds'][self.round_number - 1]
@@ -90,8 +80,7 @@ class Round():
             else:
                 self.groups.append(Group(group_number, group_letter, self, groups[group_letter], self.event_config))
 
-    #def __iter__(self):
-    #    return (group for group in self.groups)
+
 class Pilot:
     def __init__(self, pilot_json):
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -116,7 +105,6 @@ def make_rounds(json_data, event_config=None):
     )
     r.set_group_data(json_data['event']['prelim_standings']['standings'])
     round_data.append( r )
-    ###draw[pilot.pilot_id][task.round_number] = pilot.rounds[parseInt(task.round_number) - 1].flights[0].flight_group
   return round_data   
 
 class f3k_event:
@@ -130,13 +118,10 @@ class f3k_event:
         pilots = {}
         for pilot in raw_json['event']['pilots']:
             pilots[int(pilot['pilot_id'])] = Pilot(pilot)
-            #pilot['pilot_first_name'] + " " + pilot['pilot_last_name']
         return pilots
     
     def load_data(self, raw_json):
         self.rounds = make_rounds(raw_json)
-        
         self.pilots = self._set_pilots(raw_json)
-        
         # Store in case we need it later
         self.raw_json = raw_json   
