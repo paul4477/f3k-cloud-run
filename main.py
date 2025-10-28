@@ -2,6 +2,16 @@ import os
 import flask
 import redis
 from redis.commands.json.path import Path
+    
+# Patch JSONEncoder to use __json__ method if available
+from json import JSONEncoder
+def wrapped_default(self, obj):
+    return getattr(obj.__class__, "__json__", wrapped_default.default)(obj)
+wrapped_default.default = JSONEncoder().default
+
+# apply the patch
+JSONEncoder.original_default = JSONEncoder.default
+JSONEncoder.default = wrapped_default
 
 import logging
 logging.basicConfig(format='%(asctime)s.%(msecs)03d %(name)s %(levelname)s:%(message)s', datefmt='%m/%d/%Y %H:%M:%S', level=logging.DEBUG, filename='f3k-cloud-run.log')
@@ -168,15 +178,6 @@ def initialise():
  pass
 
 if __name__ == "__main__":
-    # Patch JSONEncoder to use __json__ method if available
-    from json import JSONEncoder
-    def wrapped_default(self, obj):
-        return getattr(obj.__class__, "__json__", wrapped_default.default)(obj)
-    wrapped_default.default = JSONEncoder().default
-    
-    # apply the patch
-    JSONEncoder.original_default = JSONEncoder.default
-    JSONEncoder.default = wrapped_default
 
     initialise()
     app.logger.setLevel(logging.DEBUG)
