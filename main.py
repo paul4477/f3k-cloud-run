@@ -1,23 +1,10 @@
 import os
-import time
 import flask
-import json
 import redis
 from redis.commands.json.path import Path
-from json import JSONEncoder
-def wrapped_default(self, obj):
-    return getattr(obj.__class__, "__json__", wrapped_default.default)(obj)
-wrapped_default.default = JSONEncoder().default
-   
-# apply the patch
-JSONEncoder.original_default = JSONEncoder.default
-JSONEncoder.default = wrapped_default
-
 
 import logging
-import multiprocessing 
-
-logging.basicConfig(format='%(asctime)s.%(msecs)03d %(name)s %(levelname)s:%(message)s', datefmt='%m/%d/%Y %H:%M:%S', level=logging.DEBUG, filename='/tmp/main.log')
+logging.basicConfig(format='%(asctime)s.%(msecs)03d %(name)s %(levelname)s:%(message)s', datefmt='%m/%d/%Y %H:%M:%S', level=logging.DEBUG, filename='f3k-cloud-run.log')
 
 from flask import Flask, render_template, request, redirect, url_for
 from flask_sse import sse
@@ -25,12 +12,13 @@ from flask_sse import sse
 global events 
 events = {}
 
-app = flask.Flask(__name__)
+app = flask.Flask("f3k-cloud-run")
+# Redis definition for Flask SSE
 app.config["REDIS_URL"] = "redis://127.0.0.1"
-redis_client = redis.Redis(host="127.0.0.1", port=6379, db=0)
-
 app.register_blueprint(sse, url_prefix='/eventsource')
 
+# Redis client for direct access
+redis_client = redis.Redis(host="127.0.0.1", port=6379, db=0)
 
 ## State is only maintained in the client as far as the timing, round progression etc is concerned.
 ## Server side is just a data holder and broadcaster (forwarder) of state changes via SSE.
@@ -41,8 +29,8 @@ app.register_blueprint(sse, url_prefix='/eventsource')
 ## /eventsource?channel=<event-id> - SSE endpoint for event updates
 
 ## API routes:
-## /api/event - POST - create event and save to in-memory dict
-## /api/event/<event-id>/state - POST - update event state - triggers SSE message
+## /api/event - POST - create event and save to in-memory dict and add to Redis cache
+## /api/event/<event-id>/state - POST - update event state - triggers SSE message to listening clients
 
 ## /api/event/<event-id> - GET only, shows event summary details
 ## /api/event/<event-id>/round/<round-number> - GET only, shows round details
@@ -56,32 +44,25 @@ def load_from_redis(event_id):
     if result:
         events[event_id] = f3k_cl_competition.f3k_event(result)
         return events[event_id]
-
     else:
         return None
 
 @app.route('/api/event/', methods=['POST'])
 def create_event(): 
     global events
-    """Create a new event"""
     data = flask.request.json
+
     app.logger.debug(f'POST create event: {data}')
 
-    print(data['event']['event_id'])
     if 'event_id' not in data['event']:
         return flask.jsonify({'error': 'event_id required'}), 400
     
     event = f3k_cl_competition.f3k_event(data)
     events[event.event_id] = event
     redis_client.json().set(event.event_id, Path.root_path(), event)
-    print (events)
+    redis_client.expire(event.event_id, 3600*8)  # Expire in 8 hour
     
-    # Publish event creation via SSE
-    #sse.publish({'event_id': event.event_id, 'action': 'created'}, type="event")
-    
-    #return flask.jsonify({'event_id': event.event_id, 'status': 'created'}), 201
     return redirect(url_for('view_event', event_id=event.event_id))
-
 
 @app.route('/api/event/<int:event_id>', methods=['GET'])
 def get_event(event_id): 
@@ -100,7 +81,6 @@ def get_event(event_id):
         for r in event.rounds
     ]})
 
-### /api/event/<event-id>/round/<round-number> 
 @app.route('/api/event/<int:event_id>/round/<int:round_number>', methods=['GET'])
 def get_event_round(event_id, round_number): 
     global events
@@ -126,7 +106,6 @@ def get_event_round(event_id, round_number):
         ]
     })
 
-### /api/event/<event-id>/round/<round-number>/group/<group-letter> 
 @app.route('/api/event/<int:event_id>/round/<int:round_number>/group/<group_letter>', methods=['GET'])
 def get_event_round_group(event_id, round_number, group_letter): 
     global events
@@ -149,13 +128,6 @@ def get_event_round_group(event_id, round_number, group_letter):
         'pilots': [event.pilots[p].name for p in group_data.pilots]
     })
 
-@app.route('/event/<int:event_id>', methods=['GET'])
-def view_event(event_id):
-    global events
-    """Client page to view event status"""
-
-    return flask.render_template('event_viewer.html', event_id=event_id)
-
 @app.route('/api/event/<event_id>/state', methods=['POST'])
 def state(event_id):
     global events
@@ -166,16 +138,47 @@ def state(event_id):
     sse.publish(data, type="state", channel=str(event_id))  
     return {}, 200
 
+## 
+## Front end routes
+
+@app.route('/event/<int:event_id>', methods=['GET'])
+def view_event(event_id):
+    global events
+    """Client page to view event status"""
+
+    return flask.render_template('event_viewer.html', event_id=event_id)
 
 @app.route("/")
 def index():
     global events
     return flask.render_template('event_selector.html')
 
+# Static content routes
+@app.route('/favicon.ico')
+def favicon():
+    """Serve favicon from assets/images directory"""
+    return flask.send_from_directory('assets/images', 'favicon.ico')
+
+@app.route('/assets/images/<path:filename>')
+def serve_images(filename):
+    """Serve images from assets/images directory"""
+    return flask.send_from_directory('assets/images', filename)
+
 def initialise():
  pass
 
 if __name__ == "__main__":
+    # Patch JSONEncoder to use __json__ method if available
+    from json import JSONEncoder
+    def wrapped_default(self, obj):
+        return getattr(obj.__class__, "__json__", wrapped_default.default)(obj)
+    wrapped_default.default = JSONEncoder().default
+    
+    # apply the patch
+    JSONEncoder.original_default = JSONEncoder.default
+    JSONEncoder.default = wrapped_default
+
     initialise()
     app.logger.setLevel(logging.DEBUG)
+
     app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
