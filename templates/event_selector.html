@@ -1,4 +1,3 @@
-
 {% extends 'base.html' %}
 {% block content %}
     <h1 class="page-header">{% block title %}Event Search{% endblock %}</h1>
@@ -44,8 +43,6 @@
     <h2>Events</h2>
     <ul id="event-list" class="list-group"></ul>
 
-    <h3>Event Details</h3>
-    <div id="event-details"></div>
   </div>
 
   <script>
@@ -138,23 +135,111 @@
         const events = result.events || [];
         const list = document.getElementById("event-list");
         list.innerHTML = "";
+        
+        // Load SVG data once and reuse it
+        let svgData = null;
+        try {
+          const svgResponse = await fetch("/assets/images/glider15.svg");
+          if (svgResponse.ok) {
+            svgData = await svgResponse.text();
+          }
+        } catch (err) {
+          console.warn("Could not load SVG data:", err);
+        }
+        
         events.forEach(ev => {
           const li = document.createElement("li");
           li.className = "list-group-item";
-          li.textContent = ev.event_name || ev.name || "Unnamed event";
+          li.style.cursor = "pointer";
+          li.style.display = "flex";
+          li.style.alignItems = "center";
+          li.style.gap = "10px";
+          
+          // Create SVG element
+          const iconContainer = document.createElement("div");
+          iconContainer.style.flexShrink = "0";
+          iconContainer.style.display = "flex";
+          iconContainer.style.alignItems = "center";
+          iconContainer.style.justifyContent = "center";
+          
+          if (svgData) {
+            // Create SVG from loaded data
+            iconContainer.innerHTML = svgData;
+            const svgElement = iconContainer.querySelector('svg');
+            if (svgElement) {
+              svgElement.style.width = "8vw";
+              svgElement.style.height = "8vw";
+              svgElement.style.background = "rgb(75 107 250)"; // Allows CSS color control
+            }
+          } else {
+            // Fallback: use object element
+            const svgObject = document.createElement("object");
+            svgObject.data = "/assets/images/glider15.svg";
+            svgObject.type = "image/svg+xml";
+            //svgObject.style.width = "20px";
+            //svgObject.style.height = "20px";
+            svgObject.style.pointerEvents = "none";
+            iconContainer.appendChild(svgObject);
+          }
+          
+          // Create text content
+          const textSpan = document.createElement("span");
+          textSpan.textContent = ev.event_name || ev.name || "Unnamed event";
+          textSpan.style.flex = "1";
+          
+          // Append icon and text to list item
+          li.appendChild(iconContainer);
+          li.appendChild(textSpan);
           li.dataset.eventId = ev.event_id;
+          
+          // Modified click handler - directly load and post event
           li.onclick = async () => {
             try {
+              // Show loading state
+              li.style.opacity = "0.5";
+              textSpan.textContent = `Loading ${ev.event_name || ev.name || "event"}...`;
+              
+              // Fetch full event details
               const detailsResp = await getEventInfoFull(baseUrl, login, password, ev.event_id);
-              // per your note: the useful data is in detailsResp.event
-              const eventObj = (detailsResp && detailsResp.event) ? detailsResp.event : detailsResp;
-              lastEventJson = detailsResp;           // store the raw event object for POST
-              renderEventDetails(eventObj);      // pass details.event into renderer
+              
+              // Post directly to /api/event/
+              const res = await fetch("/api/event/", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(detailsResp)
+              });
+              
+              // Handle redirect
+              if (res.redirected) {
+                console.log("Redirecting to:", res.url);
+                window.location.href = res.url;
+                return;
+              }
+              
+              // If no redirect, check for other responses
+              if (res.ok) {
+                const responseData = await res.json();
+                if (responseData.redirect) {
+                  window.location.href = responseData.redirect;
+                } else {
+                  console.log("Event loaded successfully:", responseData);
+                  // Optionally redirect to a default event view
+                  window.location.href = `/event/${ev.event_id}`;
+                }
+              } else {
+                throw new Error(`Server error: ${res.status}`);
+              }
+              
             } catch (err) {
-              console.error(err);
-              alert("Error fetching event details: " + err.message);
+              console.error("Error loading event:", err);
+              alert("Error loading event: " + err.message);
+              
+              // Restore original list item
+              li.style.opacity = "1";
+              textSpan.textContent = ev.event_name || ev.name || "Unnamed event";
             }
           };
+          
           list.appendChild(li);
         });
       } catch (err) {
@@ -214,37 +299,10 @@ function renderEventDetails(details) {
   body.appendChild(rightCol);
   panel.appendChild(body);
 
-  // Panel footer with Load Event button
+  // Panel footer with info message (no button needed anymore)
   const footer = document.createElement("div");
-  footer.className = "panel-footer";
-
-  const loadBtn = document.createElement("button");
-  loadBtn.className = "btn btn-success";
-  loadBtn.textContent = "Load Event";
-  loadBtn.onclick = async () => {
-    if (!lastEventJson) {
-      alert("No event JSON available to send.");
-      return;
-    }
-    try {
-      const res = await fetch("/api/event/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(lastEventJson)
-        
-      });
-      //console.log("Redirecting to:", res.url);
-      if (res.redirected) {
-        console.log("Redirecting to:", res.url);
-        window.location.href = res.url; // follow the redirect
-        return;
-      }
-    } catch (err) {
-      alert("Error sending event: " + err.message);
-    }
-  };
-
-  footer.appendChild(loadBtn);
+  footer.className = "panel-footer text-muted";
+  footer.innerHTML = `<small><em>Click on an event in the list above to load it directly.</em></small>`;
   panel.appendChild(footer);
 
   container.appendChild(panel);
