@@ -140,3 +140,5 @@ class f3k_event:
         
         # Store in case we need it later
         self.raw_json = raw_json   
+    def __json__(self):
+        return self.raw_json
