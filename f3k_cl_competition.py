@@ -125,3 +125,5 @@ class f3k_event:
         self.pilots = self._set_pilots(raw_json)
         # Store in case we need it later
         self.raw_json = raw_json   
+    def __json__(self):
+        return self.raw_json

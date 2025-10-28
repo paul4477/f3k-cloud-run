@@ -9,7 +9,7 @@
     integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"
     crossorigin="anonymous"></script>
  </head>
- <body>
+ <body class="font-monospace lh-sm">
   <div class="container">
     <div id="roundNumRow" class="row bg-danger text-white fw-bold fs-2">
       <div class="col-3">
@@ -52,31 +52,33 @@
      
      // Handle incoming messages
      eventSource.onmessage = function(event) {
-      console.log(event); 
+      //console.log(event); 
       const timestamp = new Date().toLocaleTimeString();
        const message = `[${timestamp}] ${event.data}\n`;
-       messageLog.value += message;
+       //messageLog.value += message;
        
        // Auto-scroll to bottom
        messageLog.scrollTop = messageLog.scrollHeight;
      };
     eventSource.addEventListener("pong", (event) => {
-      console.log(event);
+      //console.log(event);
       //const time = JSON.parse(event.data).time;
       const timestamp = new Date().toLocaleTimeString();
       const message = `[${timestamp}] ${event.data}\n`;
       //newElement.textContent = `ping at ${time}`;
-      messageLog.value += message;
+      //messageLog.value += message;
       //eventList.appendChild(newElement);
     });
     eventSource.addEventListener("state", (event) => {
-      console.log(event);
+      //console.log(event);
       
       const timestamp = new Date().toLocaleTimeString();
       const message = `[${timestamp}] ${event.data}\n`;
-      bigTime.textContent = event.data.time_str;
+
+      bigTime.textContent = JSON.parse(event.data).time_str ;
       
-      messageLog.value += message;
+      //messageLog.value = message;
+      console.log(JSON.parse(event.data).time_str);
       
     });
      
