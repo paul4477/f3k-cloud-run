@@ -1,256 +1,256 @@
 {% extends 'base.html' %}
 {% block content %}
 <!--{% block title %}Event Viewer{% endblock %}-->
-   <script>
-     // Create EventSource connection to /listen endpoint
-     const eventSource = new EventSource('{{ url_for("sse.stream", channel=event_id) }}');
-     const event_id = {{ event_id }};
-     console.log("Listening for event ID:", event_id);
-     let groupCarousel;
-    
-     //const messageLog = document.getElementById('messageLog');
-     const bigTime = document.getElementById('bigTime');
-     
+<script>
+    // Create EventSource connection to /listen endpoint
+    const eventSource = new EventSource('{{ url_for("sse.stream", channel=event_id) }}');
+    const event_id = {{ event_id }};
+    console.log("Listening for event ID:", event_id);
+    let groupCarousel;
+
+    //const messageLog = document.getElementById('messageLog');
+    const bigTime = document.getElementById('bigTime');
+
 
     eventSource.addEventListener("state", (event) => {
-      //console.log(event);
-      
-      data = JSON.parse(event.data);
+        //console.log(event);
 
-      document.getElementById('bigTime').textContent = data.time_s;
-      document.getElementById('roundNum').textContent = data.r_num;
-      
-      document.getElementById('groupLetter').textContent = data.g_let;
-      
-      
-      
-      // Only append flight number if > 1, unless task_name starts with "F3K Task C"
-      let showFlightNum = false;
-      if ("f_num" in data && !isNaN(parseInt(data.f_num))) {
-        const flightNum = parseInt(data.f_num);
-        if (
-          (flightNum > 1) ||
-          (typeof data.task_name === "string" && data.task_name.startsWith("F3K Task C"))
-        ) {
-          showFlightNum = true;
+        data = JSON.parse(event.data);
+
+        document.getElementById('bigTime').textContent = data.time_s;
+        document.getElementById('roundNum').textContent = data.r_num;
+
+        document.getElementById('groupLetter').textContent = data.g_let;
+
+
+
+        // Only append flight number if > 1, unless task_name starts with "F3K Task C"
+        let showFlightNum = false;
+        if ("f_num" in data && !isNaN(parseInt(data.f_num))) {
+            const flightNum = parseInt(data.f_num);
+            if (
+                (flightNum > 1) ||
+                (typeof data.task_name === "string" && data.task_name.startsWith("F3K Task C"))
+            ) {
+                showFlightNum = true;
+            }
+            if (showFlightNum) {
+                document.getElementById('groupLetter').textContent += ` (${flightNum})`;
+            }
         }
-        if (showFlightNum) {
-          document.getElementById('groupLetter').textContent += ` (${flightNum})`;
+        document.getElementById('roundDescription').textContent = data.task_name.split("- ")[1];
+        document.getElementById('sectionDescription').textContent = data.sect;
+
+        const roundInfoRow = document.getElementById('roundInfoRow')
+        const roundTimerRow = document.getElementById('roundTimerRow')
+        const homeBtn = document.getElementById('home')
+
+
+        if (data.no_fly && roundInfoRow.classList.contains('bg-success')) {
+            roundInfoRow.classList.remove('bg-success');
+            roundInfoRow.classList.add('bg-danger');
+            homeBtn.classList.remove('btn-success');
+            homeBtn.classList.add('btn-danger');
+            roundTimerRow.classList.remove('bg-success');
+            roundTimerRow.classList.add('bg-danger');
         }
-      }
-      document.getElementById('roundDescription').textContent = data.task_name.split("- ")[1];
-      document.getElementById('sectionDescription').textContent = data.sect;
+        else {
+            if (!data.no_fly && roundInfoRow.classList.contains('bg-danger')) {
+                roundInfoRow.classList.remove('bg-danger');
+                roundInfoRow.classList.add('bg-success');
+                homeBtn.classList.remove('btn-danger');
+                homeBtn.classList.add('btn-success');
 
-      const roundInfoRow = document.getElementById('roundInfoRow')
-      const roundTimerRow = document.getElementById('roundTimerRow')
-      const homeBtn = document.getElementById('home')
-      
-
-      if (data.no_fly && roundInfoRow.classList.contains('bg-success')) {
-        roundInfoRow.classList.remove('bg-success');
-        roundInfoRow.classList.add('bg-danger');
-        homeBtn.classList.remove('btn-success');
-        homeBtn.classList.add('btn-danger');
-        roundTimerRow.classList.remove('bg-success');
-        roundTimerRow.classList.add('bg-danger');
-      }
-      else {
-        if (!data.no_fly && roundInfoRow.classList.contains('bg-danger')) {
-          roundInfoRow.classList.remove('bg-danger');
-          roundInfoRow.classList.add('bg-success');
-          homeBtn.classList.remove('btn-danger');
-          homeBtn.classList.add('btn-success');
-
-          roundTimerRow.classList.remove('bg-danger');
-          roundTimerRow.classList.add('bg-success');
+                roundTimerRow.classList.remove('bg-danger');
+                roundTimerRow.classList.add('bg-success');
+            }
         }
-      }
 
-      
-      
+
+
     });
-     
-    
-     // Handle connection open
-     eventSource.onopen = function(event) {
-     };
-     
-     // Handle errors
-     eventSource.onerror = function(event) {
-       console.log("Connection error or closed\n");
-     };
-     
-     // Clean up on page unload
-     window.addEventListener('beforeunload', function() {
-       eventSource.close();
-     });
 
 
-async function createRoundGroupTable() {
-    try {
-        // Fetch the JSON data
-        const response = await fetch('{{ url_for("get_event", event_id=event_id) }}');
-        const data = await response.json();
-        
-        // Extract all unique pilot names
-        const pilots = new Set();
-        data.rounds.forEach(round => {
-            round.forEach(group => {
-                group[1].forEach(pilot => pilots.add(pilot));
-            });
-        });
-        
-        // Sort pilots alphabetically
-        const sortedPilots = Array.from(pilots).sort();
-        
-        // Create the table element
-        const table = document.createElement('table');
-        table.style.borderCollapse = 'collapse';
-        table.style.width = '100%';
-        
-        // Create header row
-        const headerRow = document.createElement('tr');
-        
-        // Add empty cell for pilot names column
-        const emptyHeader = document.createElement('th');
-        emptyHeader.textContent = 'Pilot';
-        emptyHeader.style.border = '3px solid #ddd';
-        emptyHeader.style.padding = '8px';
-        emptyHeader.style.backgroundColor = '#f2f2f2';
-        headerRow.appendChild(emptyHeader);
-        
-        // Add round number headers
-        data.rounds.forEach((round, index) => {
-            const roundHeader = document.createElement('th');
-            roundHeader.textContent = `Round ${index + 1}`;
-            roundHeader.style.border = '3px solid #ddd';
-            roundHeader.style.padding = '8px';
-            roundHeader.style.backgroundColor = '#f2f2f2';
-            roundHeader.style.textAlign = 'center';
-            headerRow.appendChild(roundHeader);
-        });
-        
-        table.appendChild(headerRow);
-        
-        // Create data rows for each pilot
-        sortedPilots.forEach(pilot => {
-            const row = document.createElement('tr');
-            
-            // Add pilot name cell
-            const pilotCell = document.createElement('td');
-            pilotCell.textContent = pilot;
-            pilotCell.style.border = '3px solid #ddd';
-            pilotCell.style.padding = '8px';
-            pilotCell.style.fontWeight = 'bold';
-            pilotCell.style.backgroundColor = '#f9f9f9';
-            row.appendChild(pilotCell);
-            
-            // Add group letter for each round
-            data.rounds.forEach(round => {
-                const groupCell = document.createElement('td');
-                
-                // Find which group this pilot is in for this round
-                let groupLetter = '';
-                round.forEach(group => {
-                    if (group[1].includes(pilot)) {
-                        groupLetter = group[0];
-                    }
-                });
-                
-                groupCell.textContent = groupLetter;
-                groupCell.style.border = '3px solid #ddd';
-                groupCell.style.padding = '2px';
-                groupCell.style.textAlign = 'center';
-                groupCell.style.fontSize = '6vw';
-                
-                // Optional: Add color coding for different groups
-                const colors = {
-                    'A': '#ea868f', // Light Red
-                    'B': '#75b798', // Light Green
-                    'C': '#6ea8fe', // Light Blue
-                    'D': '#feb272', // Light Orange
-                    'E': '#dee2e6', // Light Grey
-                    'F': '#e685b5', // Light Pink
-                    'G': '#79dfc1', // Light Teal
-                    'H': '#6edff6'  // Light Cyan
-                };
-                if (colors[groupLetter]) {
-                    groupCell.style.backgroundColor = colors[groupLetter];
-                }
-                
-                row.appendChild(groupCell);
-            });
-            
-            table.appendChild(row);
-        });
-        
-        // Add table to the page (assuming there's a container element)
-        const container = document.getElementById('table-container') || document.body;
-        container.appendChild(table);
-        
-    } catch (error) {
-        console.error('Error loading or parsing JSON:', error);
-    }
-}
+    // Handle connection open
+    eventSource.onopen = function (event) {
+    };
 
-// filepath: c:\Users\Paul.Robinson\Documents\Personal Git Checkouts\f3k-cloud-run\static\js\group-carousel.js
-class F3KGroupCarousel {
-    constructor(eventId, targetElement) {
-        this.eventId = eventId;
-        this.targetElement = targetElement;
-        this.groupSlides = [];
-        this.carouselElement = null;
-    }
+    // Handle errors
+    eventSource.onerror = function (event) {
+        console.log("Connection error or closed\n");
+    };
 
-    async initialize() {
+    // Clean up on page unload
+    window.addEventListener('beforeunload', function () {
+        eventSource.close();
+    });
+
+
+    async function createRoundGroupTable() {
         try {
-            await this.fetchRoundData();
-            this.buildCarouselHTML();
-            this.attachEventListeners();
+            // Fetch the JSON data
+            const response = await fetch('{{ url_for("get_event", event_id=event_id) }}');
+            const data = await response.json();
+
+            // Extract all unique pilot names
+            const pilots = new Set();
+            data.rounds.forEach(round => {
+                round.forEach(group => {
+                    group[1].forEach(pilot => pilots.add(pilot));
+                });
+            });
+
+            // Sort pilots alphabetically
+            const sortedPilots = Array.from(pilots).sort();
+
+            // Create the table element
+            const table = document.createElement('table');
+            table.style.borderCollapse = 'collapse';
+            table.style.width = '100%';
+
+            // Create header row
+            const headerRow = document.createElement('tr');
+
+            // Add empty cell for pilot names column
+            const emptyHeader = document.createElement('th');
+            emptyHeader.textContent = 'Pilot';
+            emptyHeader.style.border = '3px solid #ddd';
+            emptyHeader.style.padding = '8px';
+            emptyHeader.style.backgroundColor = '#f2f2f2';
+            headerRow.appendChild(emptyHeader);
+
+            // Add round number headers
+            data.rounds.forEach((round, index) => {
+                const roundHeader = document.createElement('th');
+                roundHeader.textContent = `Round ${index + 1}`;
+                roundHeader.style.border = '3px solid #ddd';
+                roundHeader.style.padding = '8px';
+                roundHeader.style.backgroundColor = '#f2f2f2';
+                roundHeader.style.textAlign = 'center';
+                headerRow.appendChild(roundHeader);
+            });
+
+            table.appendChild(headerRow);
+
+            // Create data rows for each pilot
+            sortedPilots.forEach(pilot => {
+                const row = document.createElement('tr');
+
+                // Add pilot name cell
+                const pilotCell = document.createElement('td');
+                pilotCell.textContent = pilot;
+                pilotCell.style.border = '3px solid #ddd';
+                pilotCell.style.padding = '8px';
+                pilotCell.style.fontWeight = 'bold';
+                pilotCell.style.backgroundColor = '#f9f9f9';
+                row.appendChild(pilotCell);
+
+                // Add group letter for each round
+                data.rounds.forEach(round => {
+                    const groupCell = document.createElement('td');
+
+                    // Find which group this pilot is in for this round
+                    let groupLetter = '';
+                    round.forEach(group => {
+                        if (group[1].includes(pilot)) {
+                            groupLetter = group[0];
+                        }
+                    });
+
+                    groupCell.textContent = groupLetter;
+                    groupCell.style.border = '3px solid #ddd';
+                    groupCell.style.padding = '2px';
+                    groupCell.style.textAlign = 'center';
+                    groupCell.style.fontSize = '6vw';
+
+                    // Optional: Add color coding for different groups
+                    const colors = {
+                        'A': '#ea868f', // Light Red
+                        'B': '#75b798', // Light Green
+                        'C': '#6ea8fe', // Light Blue
+                        'D': '#feb272', // Light Orange
+                        'E': '#dee2e6', // Light Grey
+                        'F': '#e685b5', // Light Pink
+                        'G': '#79dfc1', // Light Teal
+                        'H': '#6edff6'  // Light Cyan
+                    };
+                    if (colors[groupLetter]) {
+                        groupCell.style.backgroundColor = colors[groupLetter];
+                    }
+
+                    row.appendChild(groupCell);
+                });
+
+                table.appendChild(row);
+            });
+
+            // Add table to the page (assuming there's a container element)
+            const container = document.getElementById('table-container') || document.body;
+            container.appendChild(table);
+
         } catch (error) {
-            console.error('Carousel initialization failed:', error);
-            this.displayErrorMessage(error.message);
+            console.error('Error loading or parsing JSON:', error);
         }
     }
 
-    async fetchRoundData() {
-        // Get event overview first
-        const eventResponse = await fetch(`/api/event/${this.eventId}`);
-        const eventData = await eventResponse.json();
-        
-        if (eventData.error) {
-            throw new Error(eventData.error);
+    // filepath: c:\Users\Paul.Robinson\Documents\Personal Git Checkouts\f3k-cloud-run\static\js\group-carousel.js
+    class F3KGroupCarousel {
+        constructor(eventId, targetElement) {
+            this.eventId = eventId;
+            this.targetElement = targetElement;
+            this.groupSlides = [];
+            this.carouselElement = null;
         }
 
-        const totalRounds = eventData.rounds.length;
-        this.groupSlides = [];
+        async initialize() {
+            try {
+                await this.fetchRoundData();
+                this.buildCarouselHTML();
+                this.attachEventListeners();
+            } catch (error) {
+                console.error('Carousel initialization failed:', error);
+                this.displayErrorMessage(error.message);
+            }
+        }
 
-        // Fetch detailed round information
-        for (let roundNum = 1; roundNum <= totalRounds; roundNum++) {
-            const roundResponse = await fetch(`/api/event/${this.eventId}/round/${roundNum}`);
-            const roundData = await roundResponse.json();
-            
-            if (roundData.error) {
-                console.warn(`Round ${roundNum} data unavailable:`, roundData.error);
-                continue;
+        async fetchRoundData() {
+            // Get event overview first
+            const eventResponse = await fetch(`/api/event/${this.eventId}`);
+            const eventData = await eventResponse.json();
+
+            if (eventData.error) {
+                throw new Error(eventData.error);
             }
 
-            // Process each group in the round
-            roundData.groups.forEach(groupInfo => {
-                this.groupSlides.push({
-                    roundNum: roundData.round_number,
-                    taskDescription: roundData.task_name,
-                    groupId: groupInfo.letter,
-                    memberList: groupInfo.pilots
-                });
-            });
-        }
-    }
+            const totalRounds = eventData.rounds.length;
+            this.groupSlides = [];
 
-    buildCarouselHTML() {
-        const carouselId = `groupCarousel_${this.eventId}`;
-        
-        const carouselStructure = `
+            // Fetch detailed round information
+            for (let roundNum = 1; roundNum <= totalRounds; roundNum++) {
+                const roundResponse = await fetch(`/api/event/${this.eventId}/round/${roundNum}`);
+                const roundData = await roundResponse.json();
+
+                if (roundData.error) {
+                    console.warn(`Round ${roundNum} data unavailable:`, roundData.error);
+                    continue;
+                }
+
+                // Process each group in the round
+                roundData.groups.forEach(groupInfo => {
+                    this.groupSlides.push({
+                        roundNum: roundData.round_number,
+                        taskDescription: roundData.task_name,
+                        groupId: groupInfo.letter,
+                        memberList: groupInfo.pilots
+                    });
+                });
+            }
+        }
+
+        buildCarouselHTML() {
+            const carouselId = `groupCarousel_${this.eventId}`;
+
+            const carouselStructure = `
             <div id="${carouselId}" class="carousel slide carousel-dark" data-bs-interval="false">
                 ${this.createIndicators(carouselId)}
                 ${this.createSlideContent()}
@@ -258,39 +258,39 @@ class F3KGroupCarousel {
             </div>
         `;
 
-        document.getElementById(this.targetElement).innerHTML = carouselStructure;
-        
-        // Initialize Bootstrap carousel component
-        this.carouselElement = new bootstrap.Carousel(document.getElementById(carouselId), {
-            interval: false,
-            keyboard: true,
-            pause: 'hover'
-        });
-    }
+            document.getElementById(this.targetElement).innerHTML = carouselStructure;
 
-    createIndicators(carouselId) {
-        const indicators = this.groupSlides.map((_, index) => 
-            `<button type="button" data-bs-target="#${carouselId}" data-bs-slide-to="${index}" 
+            // Initialize Bootstrap carousel component
+            this.carouselElement = new bootstrap.Carousel(document.getElementById(carouselId), {
+                interval: false,
+                keyboard: true,
+                pause: 'hover'
+            });
+        }
+
+        createIndicators(carouselId) {
+            const indicators = this.groupSlides.map((_, index) =>
+                `<button type="button" data-bs-target="#${carouselId}" data-bs-slide-to="${index}" 
              ${index === 0 ? 'class="active" aria-current="true"' : ''} 
              aria-label="Group ${index + 1}"></button>`
-        ).join('');
+            ).join('');
 
-        return `
+            return `
             <div class="carousel-indicators">
                 ${indicators}
             </div>
         `;
-    }
+        }
 
-    createSlideContent() {
-        const slides = this.groupSlides.map((slideData, index) => {
-            const pilotItems = slideData.memberList.map(pilotName => 
-                `<li class="list-group-item d-flex align-items-center">
+        createSlideContent() {
+            const slides = this.groupSlides.map((slideData, index) => {
+                const pilotItems = slideData.memberList.map(pilotName =>
+                    `<li class="list-group-item d-flex align-items-center">
                     <strong>${pilotName}</strong>
                 </li>`
-            ).join('');
+                ).join('');
 
-            return `
+                return `
                 <div class="carousel-item ${index === 0 ? 'active' : ''}">
                     <div class="container">
                         <div class="row justify-content-center">
@@ -317,13 +317,13 @@ class F3KGroupCarousel {
                     </div>
                 </div>
             `;
-        }).join('');
+            }).join('');
 
-        return `<div class="carousel-inner">${slides}</div>`;
-    }
+            return `<div class="carousel-inner">${slides}</div>`;
+        }
 
-    createNavigationControls(carouselId) {
-        return `
+        createNavigationControls(carouselId) {
+            return `
             <button class="carousel-control-prev" type="button" data-bs-target="#${carouselId}" data-bs-slide="prev">
                 <span class="carousel-control-prev-icon"></span>
                 <span class="visually-hidden">Previous group</span>
@@ -333,25 +333,25 @@ class F3KGroupCarousel {
                 <span class="visually-hidden">Next group</span>
             </button>
         `;
-    }
+        }
 
-    attachEventListeners() {
-        // Add keyboard navigation
-        document.addEventListener('keydown', (event) => {
-            if (event.key === 'ArrowLeft') {
-                this.carouselElement.prev();
-            } else if (event.key === 'ArrowRight') {
-                this.carouselElement.next();
-            }
-        });
-        document.getElementById(`groupCarousel_${this.eventId}`).addEventListener('slid.bs.carousel', (event) => {
-            console.log('Slide changed to index:', event.to, timer);
-            timer.reset(15000);
-        });
-    }
+        attachEventListeners() {
+            // Add keyboard navigation
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'ArrowLeft') {
+                    this.carouselElement.prev();
+                } else if (event.key === 'ArrowRight') {
+                    this.carouselElement.next();
+                }
+            });
+            document.getElementById(`groupCarousel_${this.eventId}`).addEventListener('slid.bs.carousel', (event) => {
+                console.log('Slide changed to index:', event.to, timer);
+                timer.reset(15000);
+            });
+        }
 
-    displayErrorMessage(message) {
-        document.getElementById(this.targetElement).innerHTML = `
+        displayErrorMessage(message) {
+            document.getElementById(this.targetElement).innerHTML = `
             <div class="alert alert-warning text-center" role="alert">
                 <h4 class="alert-heading">Unable to Load Group Data</h4>
                 <p class="mb-0">${message}</p>
@@ -361,132 +361,143 @@ class F3KGroupCarousel {
                 </button>
             </div>
         `;
-    }
+        }
 
-    // Public method to jump to a specific round
-    navigateToRound(roundNumber) {
-        const targetIndex = this.groupSlides.findIndex(slide => slide.roundNum === parseInt);
-        if (targetIndex !== -1) {
-            this.carouselElement.to(targetIndex);
+        // Public method to jump to a specific round
+        navigateToRound(roundNumber) {
+            const targetIndex = this.groupSlides.findIndex(slide => slide.roundNum === parseInt);
+            if (targetIndex !== -1) {
+                this.carouselElement.to(targetIndex);
+            }
+        }
+
+        // Public method to jump to specific group
+        navigateToGroup(roundNumber, groupLetter) {
+
+            const targetIndex = this.groupSlides.findIndex(slide =>
+                slide.roundNum === parseInt(roundNumber) && slide.groupId === groupLetter
+            );
+            if (targetIndex !== -1) {
+                this.carouselElement.to(targetIndex);
+            }
         }
     }
 
-    // Public method to jump to specific group
-    navigateToGroup(roundNumber, groupLetter) {
+    // Initialization function
+    function createGroupCarousel(eventId, containerId = 'carousel-container') {
+        carousel = new F3KGroupCarousel(eventId, containerId);
+        carousel.initialize();
+        return carousel;
+    }
 
-      const targetIndex = this.groupSlides.findIndex(slide => 
-            slide.roundNum === parseInt(roundNumber) && slide.groupId === groupLetter
-        );
-        if (targetIndex !== -1) {
-            this.carouselElement.to(targetIndex);
+    function Timer(fn, t) {
+        var timerObj = setInterval(fn, t);
+
+        this.stop = function () {
+            if (timerObj) {
+                clearInterval(timerObj);
+                timerObj = null;
+            }
+            return this;
+        }
+
+        // start timer using current settings (if it's not already running)
+        this.start = function () {
+            if (!timerObj) {
+                this.stop();
+                timerObj = setInterval(fn, t);
+            }
+            return this;
+        }
+
+        // start with new or original interval, stop current interval
+        this.reset = function (newT = t) {
+            t = newT;
+            return this.stop().start();
         }
     }
-}
 
-// Initialization function
-function createGroupCarousel(eventId, containerId = 'carousel-container') {
-    carousel = new F3KGroupCarousel(eventId, containerId);
-    carousel.initialize();
-    return carousel;
-}
+    groupCarousel = createGroupCarousel(event_id, containerId = 'carousel-container')
 
-function Timer(fn, t) {
-    var timerObj = setInterval(fn, t);
-
-    this.stop = function() {
-        if (timerObj) {
-            clearInterval(timerObj);
-            timerObj = null;
-        }
-        return this;
-    }
-
-    // start timer using current settings (if it's not already running)
-    this.start = function() {
-        if (!timerObj) {
-            this.stop();
-            timerObj = setInterval(fn, t);
-        }
-        return this;
-    }
-
-    // start with new or original interval, stop current interval
-    this.reset = function(newT = t) {
-        t = newT;
-        return this.stop().start();
-    }
-}
-
-groupCarousel = createGroupCarousel(event_id, containerId = 'carousel-container')
-
-var timer = new Timer(function() {
-  groupCarousel.navigateToGroup(document.getElementById('roundNum').textContent, document.getElementById('groupLetter').textContent);
-}, 15000);
+    var timer = new Timer(function () {
+        groupCarousel.navigateToGroup(document.getElementById('roundNum').textContent, document.getElementById('groupLetter').textContent);
+    }, 15000);
 
 
-// Call the function when the page loads
-document.addEventListener('DOMContentLoaded', createRoundGroupTable);     
-   </script>
+    // Call the function when the page loads
+    document.addEventListener('DOMContentLoaded', createRoundGroupTable);     
+</script>
 
 <div id="roundInfoRow" class="row bg-danger text-white fw-bold fs-1">
 
-  <div class="col-2 gx-0">
-     <a href="{{ url_for('index')}}" id="home" class="btn btn-danger btn-lg"><svg xmlns="http://www.w3.org/2000/svg" height="8vw" fill="white" class="bi bi-house" viewBox="0 0 16 16">
-      <path d="M8.707 1.5a1 1 0 0 0-1.414 0L.646 8.146a.5.5 0 0 0 .708.708L2 8.207V13.5A1.5 1.5 0 0 0 3.5 15h9a1.5 1.5 0 0 0 1.5-1.5V8.207l.646.647a.5.5 0 0 0 .708-.708L13 5.793V2.5a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1.293zM13 7.207V13.5a.5.5 0 0 1-.5.5h-9a.5.5 0 0 1-.5-.5V7.207l5-5z"/>
-    </svg></a>
-  </div>
-  <div class="col-4 gx-0"> 
-    <div class="row gx-0"><div class="col">Round</div><div class="col text-center" id="roundNum">-</div></div>
-    <div class="row gx-0"><div class="col">Group</div><div class="col text-center" id="groupLetter">-</div></div>
-  </div>
-<div class="col-6"> 
-    <div class="row" id="roundDescription">No Live Data</div>
-  </div>
-  </div>
-      <div id="roundTimerRow" class="row bg-danger text-white align-items-center">
-      <div class="col-7 gy-0" style="font-size: 6vw" id="sectionDescription">No Data</div>
-      <div id="bigTime" class="col-5 text-center fst-normal gy-0" style="font-size: 10vw">--:--</div>
+    <div class="col-2 gx-0">
+        <a href="{{ url_for('index')}}" id="home" class="btn btn-danger btn-lg"><svg xmlns="http://www.w3.org/2000/svg"
+                height="8vw" fill="white" class="bi bi-house" viewBox="0 0 16 16">
+                <path
+                    d="M8.707 1.5a1 1 0 0 0-1.414 0L.646 8.146a.5.5 0 0 0 .708.708L2 8.207V13.5A1.5 1.5 0 0 0 3.5 15h9a1.5 1.5 0 0 0 1.5-1.5V8.207l.646.647a.5.5 0 0 0 .708-.708L13 5.793V2.5a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1.293zM13 7.207V13.5a.5.5 0 0 1-.5.5h-9a.5.5 0 0 1-.5-.5V7.207l5-5z" />
+            </svg></a>
     </div>
+    <div class="col-4 gx-0">
+        <div class="row gx-0">
+            <div class="col">Round</div>
+            <div class="col text-center" id="roundNum">-</div>
+        </div>
+        <div class="row gx-0">
+            <div class="col">Group</div>
+            <div class="col text-center" id="groupLetter">-</div>
+        </div>
+    </div>
+    <div class="col-6">
+        <div class="row" id="roundDescription">No Live Data</div>
+    </div>
+</div>
+<div id="roundTimerRow" class="row bg-danger text-white align-items-center">
+    <div class="col-7 gy-0" style="font-size: 6vw" id="sectionDescription">No Data</div>
+    <div id="bigTime" class="col-5 text-center fst-normal gy-0" style="font-size: 10vw">--:--</div>
+</div>
 
 
 
 <div class="row">&nbsp;</div>
 <div class="row">
-<ul class="nav nav-tabs nav-fill nav-underline" id="myTab" role="tablist">
-  <li class="nav-item" role="presentation">
-    <button class="nav-link active" id="groups-tab" data-bs-toggle="tab" data-bs-target="#groups-tab-pane" type="button" role="tab" aria-controls="groups-tab-pane" aria-selected="false">Groups</button>
-  </li>
-  <li class="nav-item" role="presentation">
-    <button class="nav-link" id="matrix-tab" data-bs-toggle="tab" data-bs-target="#matrix-tab-pane" type="button" role="tab" aria-controls="matrix-tab-pane" aria-selected="true">Matrix</button>
-  </li>
-</ul>
-<div class="row">&nbsp;</div>
-<div class="tab-content" id="myTabContent">
-  <div class="tab-pane fade show active" id="groups-tab-pane" role="tabpanel" aria-labelledby="groups-tab" tabindex="0">
-    <div id="table-container" class="row"></div>
-  </div>
-  <div class="tab-pane fade" id="matrix-tab-pane" role="tabpanel" aria-labelledby="matrix-tab" tabindex="0">
-
-<div id="carousel-container">
-                    <div class="text-center">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Loading groups...</span>
-                        </div>
-                        <p class="mt-2">Loading competition groups...</p>
+    <ul class="nav nav-tabs nav-fill nav-underline" id="myTab" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="groups-tab" data-bs-toggle="tab" data-bs-target="#groups-tab-pane"
+                type="button" role="tab" aria-controls="groups-tab-pane" aria-selected="true">Groups</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="matrix-tab" data-bs-toggle="tab" data-bs-target="#matrix-tab-pane"
+                type="button" role="tab" aria-controls="matrix-tab-pane" aria-selected="false">Matrix</button>
+        </li>
+    </ul>
+    <div class="row">&nbsp;</div>
+    <div class="tab-content" id="myTabContent">
+        <div class="tab-pane fade show active" id="groups-tab-pane" role="tabpanel" aria-labelledby="groups-tab"
+            tabindex="0">
+            <div id="carousel-container">
+                <div class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading groups...</span>
                     </div>
+                    <p class="mt-2">Loading competition groups...</p>
                 </div>
-  </div>
-</div>
+            </div>
+
+        </div>
+        <div class="tab-pane fade" id="matrix-tab-pane" role="tabpanel" aria-labelledby="matrix-tab" tabindex="0">
+            <div id="table-container" class="row"></div>
+        </div>
+    </div>
 </div>
 
 
 </ul>
 
-    
 
 
 
- 
-    
+
+
+
 
 {% endblock %}
