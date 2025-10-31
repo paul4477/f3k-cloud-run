@@ -114,7 +114,7 @@ async function createRoundGroupTable() {
         // Add empty cell for pilot names column
         const emptyHeader = document.createElement('th');
         emptyHeader.textContent = 'Pilot';
-        emptyHeader.style.border = '1px solid #ddd';
+        emptyHeader.style.border = '3px solid #ddd';
         emptyHeader.style.padding = '8px';
         emptyHeader.style.backgroundColor = '#f2f2f2';
         headerRow.appendChild(emptyHeader);
@@ -123,7 +123,7 @@ async function createRoundGroupTable() {
         data.rounds.forEach((round, index) => {
             const roundHeader = document.createElement('th');
             roundHeader.textContent = `Round ${index + 1}`;
-            roundHeader.style.border = '1px solid #ddd';
+            roundHeader.style.border = '3px solid #ddd';
             roundHeader.style.padding = '8px';
             roundHeader.style.backgroundColor = '#f2f2f2';
             roundHeader.style.textAlign = 'center';
@@ -139,7 +139,7 @@ async function createRoundGroupTable() {
             // Add pilot name cell
             const pilotCell = document.createElement('td');
             pilotCell.textContent = pilot;
-            pilotCell.style.border = '1px solid #ddd';
+            pilotCell.style.border = '3px solid #ddd';
             pilotCell.style.padding = '8px';
             pilotCell.style.fontWeight = 'bold';
             pilotCell.style.backgroundColor = '#f9f9f9';
@@ -158,15 +158,21 @@ async function createRoundGroupTable() {
                 });
                 
                 groupCell.textContent = groupLetter;
-                groupCell.style.border = '1px solid #ddd';
+                groupCell.style.border = '3px solid #ddd';
                 groupCell.style.padding = '8px';
                 groupCell.style.textAlign = 'center';
+                groupCell.style.fontSize = '4vw';
                 
                 // Optional: Add color coding for different groups
                 const colors = {
-                    'A': '#ffebee',
-                    'B': '#e8f5e8',
-                    'C': '#e3f2fd'
+                    'A': '#ea868f', // Light Red
+                    'B': '#75b798', // Light Green
+                    'C': '#6ea8fe', // Light Blue
+                    'D': '#feb272', // Light Orange
+                    'E': '#dee2e6', // Light Grey
+                    'F': '#e685b5', // Light Pink
+                    'G': '#79dfc1', // Light Teal
+                    'H': '#6edff6'  // Light Cyan
                 };
                 if (colors[groupLetter]) {
                     groupCell.style.backgroundColor = colors[groupLetter];
@@ -448,10 +454,10 @@ document.addEventListener('DOMContentLoaded', createRoundGroupTable);
 <div class="row">
 <ul class="nav nav-tabs nav-fill nav-underline" id="myTab" role="tablist">
   <li class="nav-item" role="presentation">
-    <button class="nav-link active" id="matrix-tab" data-bs-toggle="tab" data-bs-target="#matrix-tab-pane" type="button" role="tab" aria-controls="matrix-tab-pane" aria-selected="true">Matrix</button>
+    <button class="nav-link" id="groups-tab" data-bs-toggle="tab" data-bs-target="#groups-tab-pane" type="button" role="tab" aria-controls="groups-tab-pane" aria-selected="false">Groups</button>
   </li>
   <li class="nav-item" role="presentation">
-    <button class="nav-link" id="groups-tab" data-bs-toggle="tab" data-bs-target="#groups-tab-pane" type="button" role="tab" aria-controls="groups-tab-pane" aria-selected="false">Groups</button>
+    <button class="nav-link active" id="matrix-tab" data-bs-toggle="tab" data-bs-target="#matrix-tab-pane" type="button" role="tab" aria-controls="matrix-tab-pane" aria-selected="true">Matrix</button>
   </li>
 </ul>
 <div class="row">&nbsp;</div>
