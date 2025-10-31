@@ -85,6 +85,20 @@
         eventSource.close();
     });
 
+    // Function to highlight a table row
+    function highlightTableRow(row) {
+        // Remove highlight from all rows first
+        const table = row.parentElement;
+        const allRows = table.querySelectorAll('tr');
+        allRows.forEach(r => {
+            r.style.border = '';
+            r.style.outline = '';
+        });
+
+        // Add highlight to the clicked row
+        row.style.border = '5px solid black';
+        row.style.outline = 'none';
+    }
 
     async function createRoundGroupTable() {
         try {
@@ -143,6 +157,13 @@
                 pilotCell.style.padding = '8px';
                 pilotCell.style.fontWeight = 'bold';
                 pilotCell.style.backgroundColor = '#f9f9f9';
+                pilotCell.style.cursor = 'pointer';
+                
+                // Add click event listener to highlight row
+                pilotCell.addEventListener('click', function() {
+                    highlightTableRow(row);
+                });
+                
                 row.appendChild(pilotCell);
 
                 // Add group letter for each round
@@ -162,6 +183,7 @@
                     groupCell.style.padding = '2px';
                     groupCell.style.textAlign = 'center';
                     groupCell.style.fontSize = '6vw';
+                    groupCell.style.cursor = 'pointer';
 
                     // Optional: Add color coding for different groups
                     const colors = {
@@ -177,6 +199,11 @@
                     if (colors[groupLetter]) {
                         groupCell.style.backgroundColor = colors[groupLetter];
                     }
+
+                    // Add click event listener to highlight row
+                    groupCell.addEventListener('click', function() {
+                        highlightTableRow(row);
+                    });
 
                     row.appendChild(groupCell);
                 });
