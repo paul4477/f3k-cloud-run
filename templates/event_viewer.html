@@ -159,9 +159,9 @@ async function createRoundGroupTable() {
                 
                 groupCell.textContent = groupLetter;
                 groupCell.style.border = '3px solid #ddd';
-                groupCell.style.padding = '8px';
+                groupCell.style.padding = '2px';
                 groupCell.style.textAlign = 'center';
-                groupCell.style.fontSize = '4vw';
+                groupCell.style.fontSize = '6vw';
                 
                 // Optional: Add color coding for different groups
                 const colors = {
@@ -454,19 +454,19 @@ document.addEventListener('DOMContentLoaded', createRoundGroupTable);
 <div class="row">
 <ul class="nav nav-tabs nav-fill nav-underline" id="myTab" role="tablist">
   <li class="nav-item" role="presentation">
-    <button class="nav-link" id="groups-tab" data-bs-toggle="tab" data-bs-target="#groups-tab-pane" type="button" role="tab" aria-controls="groups-tab-pane" aria-selected="false">Groups</button>
+    <button class="nav-link active" id="groups-tab" data-bs-toggle="tab" data-bs-target="#groups-tab-pane" type="button" role="tab" aria-controls="groups-tab-pane" aria-selected="false">Groups</button>
   </li>
   <li class="nav-item" role="presentation">
-    <button class="nav-link active" id="matrix-tab" data-bs-toggle="tab" data-bs-target="#matrix-tab-pane" type="button" role="tab" aria-controls="matrix-tab-pane" aria-selected="true">Matrix</button>
+    <button class="nav-link" id="matrix-tab" data-bs-toggle="tab" data-bs-target="#matrix-tab-pane" type="button" role="tab" aria-controls="matrix-tab-pane" aria-selected="true">Matrix</button>
   </li>
 </ul>
 <div class="row">&nbsp;</div>
 <div class="tab-content" id="myTabContent">
-  <div class="tab-pane fade show active" id="matrix-tab-pane" role="tabpanel" aria-labelledby="matrix-tab" tabindex="0">
+  <div class="tab-pane fade show active" id="groups-tab-pane" role="tabpanel" aria-labelledby="groups-tab" tabindex="0">
     <div id="table-container" class="row"></div>
   </div>
-  <div class="tab-pane fade" id="groups-tab-pane" role="tabpanel" aria-labelledby="groups-tab" tabindex="0">
-    
+  <div class="tab-pane fade" id="matrix-tab-pane" role="tabpanel" aria-labelledby="matrix-tab" tabindex="0">
+
 <div id="carousel-container">
                     <div class="text-center">
                         <div class="spinner-border text-primary" role="status">
