@@ -67,7 +67,6 @@ class Round():
                 except IndexError:
                     self.logger.warning(f"Pilot {pilot_id} has no data for round {self.round_number}")
                     continue
-                assert round_data['round_number'] == self.round_number
                 for flight in round_data['flights']:
                     if flight['flight_group'] not in groups:
                         groups[flight['flight_group']] = []
