@@ -12,7 +12,7 @@ class Group:
         self.group_letter = group_letter
         self.round = round_obj  # Reference to parent Round
         self.pilots = pilot_list  # List of pilot IDs in this group
-        self.logger.debug(f"Group got config {event_config}")
+        #self.logger.debug(f"Group got config {event_config}")
         self.event_config = event_config or {}
                 
         self.sections = []
@@ -108,6 +108,7 @@ def make_rounds(json_data, event_config=None):
 
 class f3k_event:
     def __init__(self, data):
+        self.logger = logging.getLogger(self.__class__.__name__)
         self.event_id = data['event']['event_id']
         self.rounds = []
         self.pilots = {}
@@ -123,6 +124,13 @@ class f3k_event:
         self.rounds = make_rounds(raw_json)
         self.pilots = self._set_pilots(raw_json)
         # Store in case we need it later
-        self.raw_json = raw_json   
+        self.raw_json = raw_json
+        self.logger.info(f"Loaded event {self.event_id}: {len(self.rounds)} rounds, {len(self.pilots)} pilots")
+        for r in self.rounds:
+            group_summary = ", ".join(
+                f"{g.group_letter}:[{', '.join(self.pilots[p].name for p in g.pilots if p in self.pilots)}]"
+                for g in r.groups
+            )
+            self.logger.debug(f"  Round {r.round_number} ({r.short_code}): {group_summary}")
     def __json__(self):
         return self.raw_json
