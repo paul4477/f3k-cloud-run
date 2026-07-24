@@ -100,11 +100,12 @@
         row.style.outline = 'none';
     }
 
-    async function createRoundGroupTable() {
+    async function createRoundGroupTable(data = null) {
         try {
-            // Fetch the JSON data
-            const response = await fetch('{{ url_for("get_event", event_id=event_id) }}');
-            const data = await response.json();
+            if (!data) {
+                const response = await fetch('{{ url_for("get_event", event_id=event_id) }}');
+                data = await response.json();
+            }
 
             // Extract all unique pilot names
             const pilots = new Set();
@@ -229,9 +230,9 @@
             this.carouselElement = null;
         }
 
-        async initialize() {
+        async initialize(eventData = null) {
             try {
-                await this.fetchRoundData();
+                await this.fetchRoundData(eventData);
                 this.buildCarouselHTML();
                 this.attachEventListeners();
             } catch (error) {
@@ -240,10 +241,12 @@
             }
         }
 
-        async fetchRoundData() {
+        async fetchRoundData(eventData = null) {
             // Get event overview first
-            const eventResponse = await fetch(`/api/event/${this.eventId}`);
-            const eventData = await eventResponse.json();
+            if (!eventData) {
+                const eventResponse = await fetch(`/api/event/${this.eventId}`);
+                eventData = await eventResponse.json();
+            }
 
             if (eventData.error) {
                 throw new Error(eventData.error);
@@ -411,9 +414,9 @@
     }
 
     // Initialization function
-    function createGroupCarousel(eventId, containerId = 'carousel-container') {
+    function createGroupCarousel(eventId, containerId = 'carousel-container', eventData = null) {
         carousel = new F3KGroupCarousel(eventId, containerId);
-        carousel.initialize();
+        carousel.initialize(eventData);
         return carousel;
     }
 
@@ -444,15 +447,21 @@
         }
     }
 
-    groupCarousel = createGroupCarousel(event_id, containerId = 'carousel-container')
+    var timer;
 
-    var timer = new Timer(function () {
-        groupCarousel.navigateToGroup(document.getElementById('roundNum').textContent, document.getElementById('groupLetter').textContent);
-    }, 15000);
+    async function initializePage() {
+        const response = await fetch('{{ url_for("get_event", event_id=event_id) }}');
+        const eventData = await response.json();
 
+        createRoundGroupTable(eventData);
+        groupCarousel = createGroupCarousel(event_id, 'carousel-container', eventData);
 
-    // Call the function when the page loads
-    document.addEventListener('DOMContentLoaded', createRoundGroupTable);     
+        timer = new Timer(function () {
+            groupCarousel.navigateToGroup(document.getElementById('roundNum').textContent, document.getElementById('groupLetter').textContent);
+        }, 15000);
+    }
+
+    document.addEventListener('DOMContentLoaded', initializePage);     
 </script>
 
 <div id="roundInfoRow" class="row bg-danger text-white fw-bold fs-1">
