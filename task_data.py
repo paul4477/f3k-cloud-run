@@ -95,6 +95,11 @@ f3k_task_timing_data["f3k_l"] = {
             'description': "F3k Task L: Single flight. Single launch. Max time nine minutes fifty nine seconds. Ten minute working time.",
             'windowTime': 600
 }
+f3k_task_timing_data["f3k_l2"] = {
+            'name': "F3K Task L - Single Flight (6:59 Max)",
+            'description': "F3k Task L: Single flight. Single launch. Max time six minutes fifty nine seconds. Seven minute working time.",
+            'windowTime': 420
+}
 f3k_task_timing_data["f3k_m"] = {
             'name': "F3K Task M - Huge Ladder 3, 5, 7",
             'description': "F3k Task M: Huge ladder. Three flights only. Three minute, five minute, and seven minnit flights in order. Fifteen minute working time.",
