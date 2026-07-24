@@ -83,13 +83,15 @@ def get_event(event_id):
             return flask.jsonify({'error': 'Event not found', 'events':events.keys()}), 404
     
     event = events[event_id]
-    return flask.jsonify({'rounds': [ 
+    response = flask.jsonify({'rounds': [ 
         [
             (g.group_letter, list(event.pilots[p].name for p in g.pilots))
             for g in r.groups
             ]
         for r in event.rounds
     ]})
+    response.headers['Cache-Control'] = 'no-store'
+    return response
 
 @app.route('/api/event/<int:event_id>/round/<int:round_number>', methods=['GET'])
 def get_event_round(event_id, round_number): 
@@ -104,7 +106,7 @@ def get_event_round(event_id, round_number):
         return flask.jsonify({'error': 'Round not found'}), 404
 
     round_data = event.rounds[round_number - 1]
-    return flask.jsonify({
+    response = flask.jsonify({
         'round_number': round_data.round_number,
         'task_name': round_data.task_name,
         'groups': [
@@ -115,6 +117,8 @@ def get_event_round(event_id, round_number):
             for g in round_data.groups
         ]
     })
+    response.headers['Cache-Control'] = 'no-store'
+    return response
 
 @app.route('/api/event/<int:event_id>/round/<int:round_number>/group/<group_letter>', methods=['GET'])
 def get_event_round_group(event_id, round_number, group_letter): 
@@ -133,10 +137,12 @@ def get_event_round_group(event_id, round_number, group_letter):
     if not group_data:
         return flask.jsonify({'error': 'Group not found'}), 404
 
-    return flask.jsonify({
+    response = flask.jsonify({
         'group_letter': group_data.group_letter,
         'pilots': [event.pilots[p].name for p in group_data.pilots]
     })
+    response.headers['Cache-Control'] = 'no-store'
+    return response
 
 @app.route('/api/event/<event_id>/state', methods=['POST'])
 def state(event_id):
