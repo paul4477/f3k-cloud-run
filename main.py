@@ -78,9 +78,8 @@ def create_event():
 def get_event(event_id): 
     global events
     """GET JSON of a specific event"""
-    if event_id not in events:
-        if not load_from_redis(event_id):
-            return flask.jsonify({'error': 'Event not found', 'events':events.keys()}), 404
+    if not load_from_redis(event_id):
+        return flask.jsonify({'error': 'Event not found', 'events':events.keys()}), 404
     
     event = events[event_id]
     response = flask.jsonify({'rounds': [ 
@@ -97,9 +96,8 @@ def get_event(event_id):
 def get_event_round(event_id, round_number): 
     global events
     """GET JSON of a specific event round"""
-    if event_id not in events:
-        if not load_from_redis(event_id):
-            return flask.jsonify({'error': 'Event not found'}), 404
+    if not load_from_redis(event_id):
+        return flask.jsonify({'error': 'Event not found'}), 404
 
     event = events[event_id]
     if round_number < 1 or round_number > len(event.rounds):
@@ -124,9 +122,8 @@ def get_event_round(event_id, round_number):
 def get_event_round_group(event_id, round_number, group_letter): 
     global events
     """GET JSON of a specific event round group"""
-    if event_id not in events:
-        if not load_from_redis(event_id):
-            return flask.jsonify({'error': 'Event not found'}), 404
+    if not load_from_redis(event_id):
+        return flask.jsonify({'error': 'Event not found'}), 404
 
     event = events[event_id]
     if round_number < 1 or round_number > len(event.rounds):
