@@ -61,16 +61,23 @@ class Round():
         for pilot in self.standings_data:
             pilot_id = pilot['pilot_id']
             
-            if len(pilot['rounds']) >= 0:
-                # Only look at this round
-                try: round_data = pilot['rounds'][self.round_number - 1]
-                except IndexError:
-                    self.logger.warning(f"Pilot {pilot_id} has no data for round {self.round_number}")
-                    continue
-                for flight in round_data['flights']:
-                    if flight['flight_group'] not in groups:
-                        groups[flight['flight_group']] = []
-                    groups[flight['flight_group']].append(pilot_id)
+            # Only look at this round. The rounds are not guaranteed to be
+            # ordered, so find it by its round number rather than its index.
+            round_data = next(
+                (
+                    candidate
+                    for candidate in pilot['rounds']
+                    if candidate.get('round_number') == self.round_number
+                ),
+                None,
+            )
+            if round_data is None:
+                self.logger.warning(f"Pilot {pilot_id} has no data for round {self.round_number}")
+                continue
+            for flight in round_data['flights']:
+                if flight['flight_group'] not in groups:
+                    groups[flight['flight_group']] = []
+                groups[flight['flight_group']].append(pilot_id)
         for group_letter in sorted(groups): 
             group_number = letters.index(group_letter)
             # Make All Up group if this is an All Up round
